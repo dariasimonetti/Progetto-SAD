@@ -1,0 +1,6 @@
+variable,n,mean,sd,median,iqr,min,max
+age,60,32.68,12.08,33,22.25,15,56
+age_of_onset,60,29.73,11.05,30.5,20.25,8,52
+disease_duration,60,2.95,4.19,2,4,0,21
+edss,60,2.27,1.6,2,2.5,0,6
+binary_sum,60,4.05,2.39,4,4,0,10
