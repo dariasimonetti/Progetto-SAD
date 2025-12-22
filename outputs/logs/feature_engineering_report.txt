@@ -1,0 +1,49 @@
+================================================================================
+                    FEATURE ENGINEERING REPORT
+================================================================================
+Timestamp: 2025-12-20 11:58:10 
+Dataset:  outputs/data/analysis_ready.rds
+Righe: 60 | Colonne: 31 
+================================================================================
+
+--- DISEASE_DURATION ---
+Range: 0 - 21 anni
+Media: 2.95 anni
+NA: 0 ( 0 %)
+
+--- BINARY_SUM ---
+Range: 0 - 10 
+Media: 4.05 
+NA: 0 ( 0 %)
+
+--- EDSS_GROUP ---
+Lieve (0-2.5) : 35 ( 58.33 %)
+Moderato (3-5.5) : 23 ( 38.33 %)
+Severo (6-10) : 2 ( 3.33 %)
+
+--- COLONNE BINARIE IDENTIFICATE ---
+Numero: 19 
+Elenco:
+ - pyramidal
+ - cerebella
+ - brain_stem
+ - sensory
+ - sphincters
+ - visual
+ - mental
+ - speech
+ - motor_system
+ - sensory_system
+ - coordination
+ - gait
+ - bowel_bladder
+ - mobility
+ - mental_state
+ - optic_disc
+ - nystagmus
+ - ocular_move
+ - swallowing 
+
+================================================================================
+                         FINE REPORT
+================================================================================

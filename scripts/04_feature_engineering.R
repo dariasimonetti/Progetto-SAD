@@ -1,7 +1,7 @@
 # ============================================================================
 # Script: 04_feature_engineering.R
 # Descrizione: Feature engineering - creazione nuove variabili
-# Autore: Daria-Simonetti
+# Autore: Daria Simonetti
 # ============================================================================
 
 source("scripts/01_setup.R")
@@ -253,6 +253,3 @@ df %>%
 cat("\n\nColonne binarie identificate (", length(binary_cols), "):\n")
 cat("--------------------------------------------------------------------------------\n")
 cat(paste(binary_cols, collapse = "\n"), "\n")
-
-
-# --- Fine script ---

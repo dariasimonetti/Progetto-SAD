@@ -1,7 +1,7 @@
 # ============================================================================
 # Script: 05_symptom_encoding.R
 # Descrizione: Encoding multi-label della colonna symptom
-# Autore: Daria-Simonetti
+# Autore: Daria Simonetti
 # ============================================================================
 
 source("scripts/01_setup.R")
@@ -9,7 +9,7 @@ source("scripts/01_setup.R")
 input_path <- "outputs/data/dataset_ready.rds"
 
 if (!file.exists(input_path)) {
-  stop("❌ File non trovato: ", input_path,)
+  stop("File non trovato: ", input_path,)
 }
 
 df <- readRDS(input_path)
@@ -67,16 +67,16 @@ for (col_name in names(symptom_patterns)) {
   df <- df %>%
     mutate(
       !!col_name := dplyr::case_when(
-        is.na(symptom_lower) ~ NA_integer_,                      # regola: NA -> NA
+        is.na(symptom_lower) ~ NA_integer_,               # regola: NA -> NA
         str_detect(symptom_lower, pattern) ~ 1L,
         TRUE ~ 0L
       )
     )
   
-  # Conta prevalenza
-  n_positive <- sum(df[[col_name]], na.rm = TRUE)
+  # Conta frequenze (prevalenze)
+  n_positive <- sum(df[[col_name]], na.rm = TRUE) #frequenza assoluta
   denom <- sum(!is.na(df[[col_name]]))
-  perc <- round(n_positive / nrow(df) * 100, 1)
+  perc <- round(n_positive / nrow(df) * 100, 1)  #frequenza relativa percentuale
   cat(col_name, ":", n_positive, "casi (", perc, "%)\n")
 }
 
@@ -118,9 +118,9 @@ if (nrow(no_match_rows) > 0) {
 # Rimuovi colonna temporanea
 df <- df %>% select(-symptom_any_match)
 
-# 5. TABELLA PREVALENZE
+# 5. TABELLA FREQUENZE
 
-prevalence_table <- tibble(
+frequency_table <- tibble(
   symptom = new_cols,
   n = sapply(new_cols, function(col) sum(df[[col]], na.rm = TRUE)),
   total = nrow(df)
@@ -131,18 +131,18 @@ prevalence_table <- tibble(
   arrange(desc(perc)) %>%
   select(symptom, n, perc)
 
-cat("\nPrevalenza sintomi:\n")
-print(as.data.frame(prevalence_table), row.names = FALSE)
+cat("\nFrequenza sintomi:\n")
+print(as.data.frame(frequency_table), row.names = FALSE)
 
 # Salva tabella
-prevalence_path <- "outputs/tables/symptom_prevalence.csv"
-write_csv(prevalence_table, prevalence_path)
-cat("\nSalvato:", prevalence_path, "\n")
+frequency_path <- "outputs/tables/symptom_frequence.csv"
+write_csv(frequency_table, frequency_path)
+cat("\nSalvato:", frequency_path, "\n")
 
 
 # 6. SALVATAGGIO DATASET
 
-output_path <- "outputs/data/dataset_ready_with_symptoms.rds"
+output_path <- "outputs/data/data_complete.rds"
 saveRDS(df, output_path)
 
 cat("Salvato:", output_path, "(sovrascritto)\n")
@@ -157,9 +157,9 @@ for (col in new_cols) {
   cat("   -", col, "\n")
 }
 
-cat("\nTop 5 sintomi per prevalenza:\n")
-prevalence_table %>%
-  head(5) %>%
+cat("\nTop 3 sintomi per frequenza:\n")
+frequency_table %>%
+  head(3) %>%
   mutate(display = paste0(symptom, ": ", n, " (", perc, "%)")) %>%
   pull(display) %>%
   paste("   -", .) %>%
@@ -173,4 +173,3 @@ df %>%
   select(id, symptom, all_of(new_cols)) %>%
   glimpse()
 
-# --- Fine script ---

@@ -1,366 +1,449 @@
 # ============================================================================
-# Script:  06_univariata. R
-# Descrizione: Analisi esplorativa univariata - Tabelle e Grafici
-# Autore: Daria-Simonetti
+# Script: 06_eda_univariate.R
+# Descrizione: EDA Univariata - Tabelle e grafici descrittivi
+# Autore:  Daria Simonetti
 # ============================================================================
 
 source("scripts/01_setup.R")
 
+df <- readRDS("outputs/data/data_complete.rds")
 
-input_path <- "outputs/data/dataset_ready_with_symptoms.rds"
+cat("Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
 
-if (!file.exists(input_path)) {
-  stop("File non trovato: ", input_path)
-}
+# DEFINIZIONE VARIABILI
 
-df <- readRDS(input_path)
-cat("   Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
-
-
-# A) TABELLE DESCRITTIVE
-
-# ----------------------------------------------------------------------------
-# A1) Summary numeriche
-# ----------------------------------------------------------------------------
-
+# Numeriche
 numeric_vars <- c("age", "age_of_onset", "disease_duration", "edss", "binary_sum")
+
+# Categoriche
+categorical_vars <- c("gender", "medicine", "mri_edss_diff", "comorbidity", 
+                      "edss_group", "symptom")
+
+# Binarie cliniche
+clinical_binary <- c("pyramidal", "cerebella", "brain_stem", "sensory", 
+                     "sphincters", "visual", "mental", "speech", 
+                     "motor_system", "sensory_system", "coordination", 
+                     "gait", "bowel_bladder", "mobility", "mental_state", 
+                     "optic_disc", "nystagmus", "ocular_move", "swallowing")
+
+# Binarie presenting
+presenting_binary <- names(df)[grepl("^present_", names(df))]
+
+cat("\nVariabili identificate:\n")
+cat("   Numeriche:", length(numeric_vars), "\n")
+cat("   Categoriche:", length(categorical_vars), "\n")
+cat("   Binarie cliniche:", length(clinical_binary), "\n")
+cat("   Binarie presenting:", length(presenting_binary), "\n")
+
+# Contatori file salvati
+saved_csv <- character()
+saved_png <- character()
+
+
+# A)-------------------------TABELLE CSV----------------------------------------
+
+# A1) Summary x numeriche
+
 
 summary_numeric <- df %>%
   select(all_of(numeric_vars)) %>%
   pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
   group_by(variable) %>%
   summarise(
-    n = sum(!is.na(value)),
-    mean = round(mean(value, na.rm = TRUE), 2),
-    sd = round(sd(value, na.rm = TRUE), 2),
-    median = round(median(value, na.rm = TRUE), 2),
+    n_valid = sum(! is.na(value)),
+    n_na = sum(is.na(value)),
+    mean = round(mean(value, na.rm = TRUE), 2), #media
+    sd = round(sd(value, na.rm = TRUE), 2), #deviazione standard
+    variance = round(var(value, na.rm = TRUE), 2), #varianza
+    median = round(median(value, na.rm = TRUE), 2), #mediana
+    q1 = round(quantile(value, 0.25, na.rm = TRUE), 2),
+    q3 = round(quantile(value, 0.75, na.rm = TRUE), 2),
     iqr = round(IQR(value, na.rm = TRUE), 2),
     min = round(min(value, na.rm = TRUE), 2),
     max = round(max(value, na.rm = TRUE), 2),
+    range = round(max(value, na.rm = TRUE) - min(value, na.rm = TRUE), 2),
     .groups = "drop"
   ) %>%
-  # Mantiene ordine originale
+  # Riordina secondo l'ordine originale
   
   mutate(variable = factor(variable, levels = numeric_vars)) %>%
   arrange(variable) %>%
   mutate(variable = as.character(variable))
 
 write_csv(summary_numeric, "outputs/tables/summary_numeric.csv")
+saved_csv <- c(saved_csv, "outputs/tables/summary_numeric.csv")
 
-# ----------------------------------------------------------------------------
-# A2) Frequenze categoriche
-# ----------------------------------------------------------------------------
 
-categorical_vars <- c("gender", "medicine", "mri_edss_diff", "comorbidity", "edss_group")
+# A2) Frequenze x categoriche
 
-# Funzione per creare tabella frequenze
-create_freq_table <- function(data, var_name, keep_level_order = FALSE) {
-  freq_table <- data %>%
-    filter(!is.na(!!sym(var_name))) %>%
-    count(!!sym(var_name), name = "n") %>%
-    mutate(perc = round(n / sum(n) * 100, 2)) %>%
-    rename(level = !!sym(var_name)) %>%
-    mutate(level = as.character(level))
+
+# Funzione per calcolare frequenze
+calc_freq <- function(data, var_name, keep_order = FALSE) {
   
-  if (! keep_level_order) {
-    freq_table <- freq_table %>% arrange(desc(n))
+  # Calcola NA
+  n_na <- sum(is.na(data[[var_name]]))
+  
+  # Frequenze
+  freq_df <- data %>%
+    filter(!is.na(.data[[var_name]])) %>%
+    count(.data[[var_name]], name = "n") %>%
+    rename(level = 1) %>%
+    mutate(
+      level = as.character(level),
+      perc = round(n / sum(n) * 100, 2)
+    )
+  
+  # Ordina per n decrescente
+  if (! keep_order) {
+    freq_df <- freq_df %>% arrange(desc(n))
   }
   
-  return(freq_table)
+  list(freq = freq_df, n_na = n_na)
 }
 
-# Genera e salva tabelle
+# Salva frequenze per ogni variabile categorica
 for (var in categorical_vars) {
-  # Mantiene ordine livelli per gender e edss_group
-  keep_order <- var %in% c("gender", "edss_group")
   
-  freq_table <- create_freq_table(df, var, keep_level_order = keep_order)
+  # Per edss_group mantieni ordine livelli
+  keep_order <- (var == "edss_group")
   
-  file_path <- paste0("outputs/tables/freq_", var, ". csv")
-  write_csv(freq_table, file_path)
+  result <- calc_freq(df, var, keep_order = keep_order)
+  
+  output_path <- paste0("outputs/tables/freq_", var, ".csv")
+  write_csv(result$freq, output_path)
+  saved_csv <- c(saved_csv, output_path)
+  
 }
 
-# ----------------------------------------------------------------------------
-# A3) Prevalenza variabili binarie cliniche
-# ----------------------------------------------------------------------------
 
-# Identificazione colonne binarie cliniche (escludi present_*)
-clinical_binary_cols <- c(
-  "pyramidal", "cerebella", "brain_stem", "sensory", "sphincters",
-  "visual", "mental", "speech", "motor_system", "sensory_system",
-  "coordination", "gait", "bowel_bladder", "mobility", "mental_state",
-  "optic_disc", "nystagmus", "ocular_move", "swallowing"
-)
+# A3) Frequenza binarie cliniche
 
-# Filtra solo colonne esistenti
-clinical_binary_cols <- clinical_binary_cols[clinical_binary_cols %in% names(df)]
 
-prevalence_clinical <- tibble(
-  feature = clinical_binary_cols,
-  n_1 = sapply(clinical_binary_cols, function(col) sum(df[[col]] == 1, na.rm = TRUE)),
-  n_total = sapply(clinical_binary_cols, function(col) sum(! is.na(df[[col]])))
-) %>%
-  mutate(
-    perc_1 = round(n_1 / n_total * 100, 2)
+# Filtra solo colonne che esistono nel dataset
+clinical_binary_exist <- intersect(clinical_binary, names(df))
+
+freq_clinical <- df %>%
+  select(all_of(clinical_binary_exist)) %>%
+  pivot_longer(everything(), names_to = "feature", values_to = "value") %>%
+  group_by(feature) %>%
+  summarise(
+    n_1 = sum(value == 1, na.rm = TRUE), #freq assoluta 1
+    n_0 = sum(value == 0, na.rm = TRUE), #freq assoluta 0
+    n_na = sum(is.na(value)),
+    .groups = "drop"
   ) %>%
-  select(feature, n_1, perc_1) %>%
+  mutate(
+    perc_1 = round(n_1 / (n_1 + n_0) * 100, 2) #freq rel %
+  ) %>%
   arrange(desc(perc_1))
 
-write_csv(prevalence_clinical, "outputs/tables/prevalence_clinical_binary.csv")
+write_csv(freq_clinical, "outputs/tables/freq_clinical_binary.csv")
+saved_csv <- c(saved_csv, "outputs/tables/freq_clinical_binary.csv")
 
-# ----------------------------------------------------------------------------
-# A4) Prevalenza presenting symptoms (present_*)
-# ----------------------------------------------------------------------------
 
-presenting_cols <- names(df)[str_detect(names(df), "^present_")]
+# A4) Freqeunze binarie presenting
 
-prevalence_presenting <- tibble(
-  feature = presenting_cols,
-  n_1 = sapply(presenting_cols, function(col) sum(df[[col]] == 1, na.rm = TRUE)),
-  n_total = sapply(presenting_cols, function(col) sum(!is.na(df[[col]])))
-) %>%
-  mutate(
-    perc_1 = round(n_1 / n_total * 100, 2)
-  ) %>%
-  select(feature, n_1, perc_1) %>%
-  arrange(desc(perc_1))
 
-write_csv(prevalence_presenting, "outputs/tables/prevalence_presenting_binary.csv")
+if (length(presenting_binary) > 0) {
+  
+  freq_presenting <- df %>%
+    select(all_of(presenting_binary)) %>%
+    pivot_longer(everything(), names_to = "feature", values_to = "value") %>%
+    group_by(feature) %>%
+    summarise(
+      n_1 = sum(value == 1, na.rm = TRUE),
+      n_0 = sum(value == 0, na.rm = TRUE),
+      n_na = sum(is.na(value)),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      perc_1 = round(n_1 / (n_1 + n_0) * 100, 2)
+    ) %>%
+    arrange(desc(perc_1))
+  
+  write_csv(freq_presenting, "outputs/tables/freq_presenting_binary.csv")
+  saved_csv <- c(saved_csv, "outputs/tables/freq_presenting_binary.csv")
+  
+} else {
+  cat("Nessuna colonna present_* trovata nel dataset\n")
+  prevalence_presenting <- NULL
+}
 
-# B) GRAFICI
 
-# Parametri grafici comuni
-fig_width <- 8
-fig_height <- 6
-fig_dpi <- 300
+# B)-------------------------GRAFICI PNG----------------------------------------
 
-# Colori
-fill_color <- project_colors[1]
-fill_color_alt <- project_colors[5]
+# B1) Numeriche con patchwork
 
-# ----------------------------------------------------------------------------
-# B1) Grafici numeriche
-# ----------------------------------------------------------------------------
+# Funzione per creare grafico combinato hist + boxplot
+plot_numeric_dist <- function(data, var_name, bins = 15) {
+  
+  # Titolo formattato
+  title_clean <- str_replace_all(var_name, "_", " ") %>% str_to_title()
+  
+  # Istogramma + densità
+  p_hist <- ggplot(data, aes(x = .data[[var_name]])) +
+    geom_histogram(aes(y = after_stat(density)), 
+                   bins = bins, 
+                   fill = project_colors[5], 
+                   color = "white",
+                   alpha = 0.7) +
+    geom_density(color = project_colors[2], linewidth = 1) +
+    labs(
+      title = paste("Distribuzione:", title_clean),
+      x = title_clean,
+      y = "Densità"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold", size = 12))
+  
+  # Boxplot
+  p_box <- ggplot(data, aes(y = .data[[var_name]])) +
+    geom_boxplot(fill = project_colors[3], alpha = 0.7, width = 0.3) +
+    labs(y = title_clean, x = "") +
+    theme_minimal() +
+    coord_flip()
+  
+  # Combina con patchwork
+  p_combined <- p_hist / p_box + 
+    plot_layout(heights = c(3, 1))
+  
+  return(p_combined)
+}
 
-cat("\n📈 B1) Grafici variabili numeriche.. .\n")
+# Crea grafici per age, age_of_onset, disease_duration
+for (var in c("age", "age_of_onset", "disease_duration")) {
+  
+  p <- plot_numeric_dist(df, var, bins = 15)
+  
+  output_path <- paste0("outputs/figures/dist_", var, ".png")
+  ggsave(output_path, plot = p, width = 8, height = 8, dpi = 300)
+  saved_png <- c(saved_png, output_path)
+  
+}
 
-# --- Istogramma + densità:  AGE ---
-p_age <- ggplot(df, aes(x = age)) +
-  geom_histogram(aes(y = after_stat(density)), 
-                 binwidth = 5, 
-                 fill = fill_color, 
-                 color = "white",
-                 alpha = 0.7) +
-  geom_density(color = project_colors[4], linewidth = 1.2) +
-  labs(
-    title = "Distribuzione dell'età",
-    subtitle = paste0("n = ", sum(! is.na(df$age)), " | Media = ", round(mean(df$age, na.rm = TRUE), 1), " anni"),
-    x = "Età (anni)",
-    y = "Densità"
-  )
+# EDSS:  boxplot + jitter
 
-ggsave("outputs/figures/hist_age.png", p_age, width = fig_width, height = fig_height, dpi = fig_dpi)
-
-# --- Istogramma + densità:  DISEASE_DURATION ---
-p_duration <- ggplot(df, aes(x = disease_duration)) +
-  geom_histogram(aes(y = after_stat(density)), 
-                 binwidth = 2, 
-                 fill = fill_color, 
-                 color = "white",
-                 alpha = 0.7) +
-  geom_density(color = project_colors[4], linewidth = 1.2) +
-  labs(
-    title = "Distribuzione della durata di malattia",
-    subtitle = paste0("n = ", sum(!is.na(df$disease_duration)), 
-                      " | Media = ", round(mean(df$disease_duration, na.rm = TRUE), 1), " anni"),
-    x = "Durata di malattia (anni)",
-    y = "Densità"
-  )
-
-ggsave("outputs/figures/hist_disease_duration.png", p_duration, width = fig_width, height = fig_height, dpi = fig_dpi)
-
-# --- Boxplot + jitter: EDSS ---
 p_edss <- ggplot(df, aes(x = "", y = edss)) +
-  geom_boxplot(fill = fill_color, alpha = 0.5, width = 0.5, outlier.shape = NA) +
-  geom_jitter(color = fill_color, alpha = 0.7, width = 0.15, size = 2) +
+  geom_boxplot(fill = project_colors[7], alpha = 0.5, width = 0.4, outlier.shape = NA) +
+  geom_jitter(color = project_colors[6], alpha = 0.6, width = 0.1, size = 2) +
   labs(
     title = "Distribuzione EDSS",
-    subtitle = paste0("n = ", sum(! is.na(df$edss)), 
-                      " | Mediana = ", median(df$edss, na.rm = TRUE)),
+    subtitle = "Boxplot con punti individuali",
     x = "",
     y = "EDSS Score"
   ) +
-  coord_flip()
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
 
-ggsave("outputs/figures/box_edss_jitter.png", p_edss, width = fig_width, height = 5, dpi = fig_dpi)
+ggsave("outputs/figures/edss_box_jitter.png", plot = p_edss, 
+       width = 6, height = 7, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/edss_box_jitter.png")
 
-# --- Barplot conteggi: BINARY_SUM ---
-binary_sum_counts <- df %>%
+# Binary sum: barplot conteggi
+
+# Crea funzione che genera n colori interpolati
+palette <- colorRampPalette(project_colors)
+palette_19 <- palette(19)
+
+p_binary_sum <- df %>%
   filter(!is.na(binary_sum)) %>%
   count(binary_sum) %>%
-  mutate(perc = round(n / sum(n) * 100, 1))
-
-p_binary_sum <- ggplot(binary_sum_counts, aes(x = factor(binary_sum), y = n)) +
-  geom_col(fill = fill_color, alpha = 0.8) +
+  ggplot(aes(x = factor(binary_sum), y = n, fill = factor(binary_sum))) +
+  geom_col(alpha = 0.8) +
+  scale_fill_manual(values = palette_19) +
   geom_text(aes(label = n), vjust = -0.5, size = 3.5) +
   labs(
-    title = "Distribuzione Binary Sum (somma indicatori clinici)",
-    subtitle = paste0("n = ", sum(binary_sum_counts$n)),
+    title = "Distribuzione Binary Sum",
+    subtitle = "Somma indicatori clinici binari",
     x = "Binary Sum",
-    y = "Frequenza"
+    y = "Conteggio"
   ) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none"
+  )
 
-ggsave("outputs/figures/bar_binary_sum_counts.png", p_binary_sum, width = fig_width, height = fig_height, dpi = fig_dpi)
+ggsave("outputs/figures/binary_sum_counts.png", plot = p_binary_sum, 
+       width = 8, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/binary_sum_counts.png")
 
-# ----------------------------------------------------------------------------
-# B2) Grafici categoriche
-# ----------------------------------------------------------------------------
 
-# Funzione per creare barplot in percentuale
-create_perc_barplot <- function(data, var_name, title, xlab, 
-                                order_by_freq = TRUE, horizontal = FALSE) {
+# B2) Categoriche: barplot in percentuale
+
+# Funzione per barplot percentuale
+plot_bar_perc <- function(data, var_name, order_by_freq = TRUE, 
+                          rotate_labels = FALSE, show_n = TRUE) {
   
+  title_clean <- str_replace_all(var_name, "_", " ") %>% str_to_title()
+  
+  # Prepara dati
   plot_data <- data %>%
-    filter(!is.na(!!sym(var_name))) %>%
-    count(!!sym(var_name), name = "n") %>%
-    mutate(
-      perc = round(n / sum(n) * 100, 1),
-      label = paste0(n, " (", perc, "%)")
-    )
+    filter(!is.na(.data[[var_name]])) %>%
+    count(.data[[var_name]], name = "n") %>%
+    mutate(perc = n / sum(n) * 100)
   
+  # Ordina per frequenza
   if (order_by_freq) {
     plot_data <- plot_data %>%
-      mutate(!! sym(var_name) := fct_reorder(!! sym(var_name), n))
+      mutate(!! var_name := fct_reorder(.data[[var_name]], n, .desc = TRUE))
   }
   
-  p <- ggplot(plot_data, aes(x = !!sym(var_name), y = perc)) +
-    geom_col(fill = fill_color, alpha = 0.8) +
-    geom_text(aes(label = label), 
-              hjust = ifelse(horizontal, -0.1, 0.5),
-              vjust = ifelse(horizontal, 0.5, -0.5),
-              size = 3.5) +
+  # Crea plot
+  p <- ggplot(plot_data, aes(x = .data[[var_name]], y = perc)) +
+    geom_col(fill = project_colors[8], alpha = 0.8) +
     labs(
-      title = title,
-      subtitle = paste0("n = ", sum(plot_data$n)),
-      x = xlab,
+      title = paste("Distribuzione:", title_clean),
+      x = title_clean,
       y = "Percentuale (%)"
     ) +
-    scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold"))
   
-  if (horizontal) {
-    p <- p + coord_flip()
+  # Aggiungi etichette con n
+  if (show_n) {
+    p <- p + geom_text(aes(label = paste0(round(perc, 1), "%\n(n=", n, ")")), 
+                       vjust = -0.2, size = 3)
+  }
+  
+  # Ruota etichette asse x
+  if (rotate_labels) {
+    p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
   }
   
   return(p)
 }
 
-# --- MEDICINE ---
-p_medicine <- create_perc_barplot(df, "medicine", 
-                                  "Distribuzione Farmaci",
-                                  "Tipo di farmaco",
-                                  order_by_freq = TRUE)
-ggsave("outputs/figures/bar_medicine_perc.png", p_medicine, width = fig_width, height = fig_height, dpi = fig_dpi)
+# Gender
+p_gender <- plot_bar_perc(df, "gender", order_by_freq = TRUE)
+ggsave("outputs/figures/bar_gender_perc.png", plot = p_gender, 
+       width = 6, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_gender_perc.png")
 
-# --- GENDER ---
-p_gender <- df %>%
-  filter(!is.na(gender)) %>%
-  count(gender) %>%
+# Medicine
+p_medicine <- plot_bar_perc(df, "medicine", order_by_freq = TRUE)
+ggsave("outputs/figures/bar_medicine_perc.png", plot = p_medicine, 
+       width = 8, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_medicine_perc.png")
+
+# MRI EDSS diff
+p_mri <- plot_bar_perc(df, "mri_edss_diff", order_by_freq = FALSE)
+ggsave("outputs/figures/bar_mri_edss_diff_perc.png", plot = p_mri, 
+       width = 6, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_mri_edss_diff_perc.png")
+
+# Comorbidity
+p_comorbidity <- plot_bar_perc(df, "comorbidity", order_by_freq = FALSE)
+ggsave("outputs/figures/bar_comorbidity_perc.png", plot = p_comorbidity, 
+       width = 6, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_comorbidity_perc.png")
+
+# EDSS group (mantieni ordine livelli)
+p_edss_group <- plot_bar_perc(df, "edss_group", order_by_freq = FALSE)
+ggsave("outputs/figures/bar_edss_group_perc.png", plot = p_edss_group, 
+       width = 8, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_edss_group_perc.png")
+
+# Symptom (molti livelli, ruota etichette)
+p_symptom <- plot_bar_perc(df, "symptom", order_by_freq = TRUE, 
+                           rotate_labels = TRUE, show_n = FALSE) +
+  geom_text(aes(label = after_stat(y), y = after_stat(y)), 
+            stat = "identity", vjust = -0.3, size = 2.5)
+
+# Ricostruisci con etichette semplici
+p_symptom <- df %>%
+  filter(!is.na(symptom)) %>%
+  count(symptom, name = "n") %>%
   mutate(
-    perc = round(n / sum(n) * 100, 1),
-    label = paste0(n, " (", perc, "%)")
+    perc = n / sum(n) * 100,
+    symptom = fct_reorder(symptom, n, .desc = TRUE)
   ) %>%
-  ggplot(aes(x = gender, y = perc)) +
-  geom_col(fill = fill_color, alpha = 0.8) +
-  geom_text(aes(label = label), vjust = -0.5, size = 4) +
+  ggplot(aes(x = symptom, y = perc)) +
+  geom_col(fill = project_colors[8], alpha = 0.8) +
+  geom_text(aes(label = n), vjust = -0.3, size = 2.5) +
   labs(
-    title = "Distribuzione per Genere",
-    subtitle = paste0("n = ", sum(! is.na(df$gender)), 
-                      " | NA = ", sum(is.na(df$gender))),
-    x = "Genere",
+    title = "Distribuzione:  Presenting Symptom",
+    x = "Symptom",
     y = "Percentuale (%)"
   ) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 55, hjust = 1, size = 7)
+  )
 
-ggsave("outputs/figures/bar_gender_perc.png", p_gender, width = 6, height = fig_height, dpi = fig_dpi)
+ggsave("outputs/figures/bar_symptom_perc.png", plot = p_symptom, 
+       width = 12, height = 7, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_symptom_perc.png")
 
-# --- MRI_EDSS_DIFF ---
-p_mri <- create_perc_barplot(df, "mri_edss_diff",
-                             "MRI-EDSS Differenza < 2 mesi",
-                             "Risposta",
-                             order_by_freq = FALSE)
-ggsave("outputs/figures/bar_mri_edss_diff_perc.png", p_mri, width = 6, height = fig_height, dpi = fig_dpi)
 
-# --- COMORBIDITY ---
-p_comorbidity <- create_perc_barplot(df, "comorbidity",
-                                     "Presenza di Comorbidità",
-                                     "Comorbidità",
-                                     order_by_freq = FALSE)
-ggsave("outputs/figures/bar_comorbidity_perc.png", p_comorbidity, width = 6, height = fig_height, dpi = fig_dpi)
+# B3) Frequenze binarie:  barplot orizzontale
 
-# --- EDSS_GROUP ---
-p_edss_group <- df %>%
-  filter(!is.na(edss_group)) %>%
-  count(edss_group) %>%
-  mutate(
-    perc = round(n / sum(n) * 100, 1),
-    label = paste0(n, " (", perc, "%)")
-  ) %>%
-  ggplot(aes(x = edss_group, y = perc)) +
-  geom_col(fill = fill_color, alpha = 0.8) +
-  geom_text(aes(label = label), vjust = -0.5, size = 4) +
-  labs(
-    title = "Distribuzione EDSS per Gruppo di Severità",
-    subtitle = paste0("n = ", sum(!is.na(df$edss_group))),
-    x = "Gruppo EDSS",
-    y = "Percentuale (%)"
-  ) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
 
-ggsave("outputs/figures/bar_edss_group_perc.png", p_edss_group, width = fig_width, height = fig_height, dpi = fig_dpi)
-
-# ----------------------------------------------------------------------------
-# B3) Grafici prevalenze binarie
-# ----------------------------------------------------------------------------
-
-# --- Prevalenze cliniche ---
-p_prev_clinical <- prevalence_clinical %>%
+# Cliniche
+p_freq_clinical <- freq_clinical %>%
   mutate(feature = fct_reorder(feature, perc_1)) %>%
   ggplot(aes(x = feature, y = perc_1)) +
-  geom_col(fill = fill_color, alpha = 0.8) +
-  geom_text(aes(label = paste0(n_1)), hjust = -0.2, size = 3) +
+  geom_col(fill = project_colors[3], alpha = 0.8) +
+  geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
   coord_flip() +
+  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
   labs(
-    title = "Prevalenza Indicatori Clinici Binari",
-    subtitle = paste0("n = ", nrow(df), " pazienti"),
-    x = "",
-    y = "Prevalenza (%)"
+    title = "Frequenza Indicatori Clinici Binari",
+    subtitle = "Percentuale pazienti con valore = 1",
+    x = "Indicatore",
+    y = "Frequenza (%)"
   ) +
-  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.1)))
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
 
-ggsave("outputs/figures/bar_prevalence_clinical_binary.png", p_prev_clinical, 
-       width = 9, height = 8, dpi = fig_dpi)
+ggsave("outputs/figures/bar_frequency_clinical_binary.png", plot = p_prev_clinical, 
+       width = 9, height = 7, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_frequency_clinical_binary.png")
 
-# --- Prevalenze presenting symptoms ---
-p_prev_presenting <- prevalence_presenting %>%
-  mutate(
-    feature = str_remove(feature, "^present_"),
-    feature = str_to_title(feature),
-    feature = fct_reorder(feature, perc_1)
-  ) %>%
-  ggplot(aes(x = feature, y = perc_1)) +
-  geom_col(fill = fill_color_alt, alpha = 0.8) +
-  geom_text(aes(label = paste0(n_1, " (", perc_1, "%)")), hjust = -0.1, size = 3.5) +
-  coord_flip() +
-  labs(
-    title = "Prevalenza Sintomi di Presentazione",
-    subtitle = paste0("n = ", nrow(df), " pazienti | Encoding multi-label"),
-    x = "",
-    y = "Prevalenza (%)"
-  ) +
-  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15)))
 
-ggsave("outputs/figures/bar_prevalence_presenting.png", p_prev_presenting, 
-       width = 9, height = 6, dpi = fig_dpi)
+# Presenting
+if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
+  
+  p_prev_presenting <- prevalence_presenting %>%
+    mutate(feature = fct_reorder(feature, perc_1)) %>%
+    ggplot(aes(x = feature, y = perc_1)) +
+    geom_col(fill = project_colors[2], alpha = 0.8) +
+    geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
+    coord_flip() +
+    scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
+    labs(
+      title = "Frequenza Presenting Symptoms (Multi-label)",
+      subtitle = "Percentuale pazienti con sintomo presente",
+      x = "Sintomo",
+      y = "Frequenza (%)"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold"))
+  
+  ggsave("outputs/figures/bar_frequency_presenting.png", plot = p_prev_presenting, 
+         width = 9, height = 7, dpi = 300)
+  saved_png <- c(saved_png, "outputs/figures/bar_frequency_presenting.png")
+  
+} else {
+  cat("Nessun grafico presenting (colonne non presenti)\n")
+}
 
-# --- Fine script ---
+# D) OUTPUT CONSOLE FINALE
+
+
+
+cat("\nFile CSV salvati (", length(saved_csv), "):\n")
+for (f in saved_csv) {
+  cat(f, "\n")
+}
+
+cat("\nFile PNG salvati (", length(saved_png), "):\n")
+for (f in saved_png) {
+  cat(f, "\n")
+}
+
+cat("\nhead(summary_numeric):\n")
+cat("--------------------------------------------------------------------------------\n")
+print(head(summary_numeric))
+

@@ -1,0 +1,14 @@
+level,n,perc
+Sensory,19,31.67
+Visual,14,23.33
+Motor,11,18.33
+Balance,4,6.67
+"Motor, Visual",2,3.33
+"Sensory, Motor",2,3.33
+"Sensory, Visual",2,3.33
+"Balance, Motor",1,1.67
+"Motor, Behavioural",1,1.67
+"Motor, Sensory",1,1.67
+Pain,1,1.67
+"Sensory, Visual, Balance, Motor, Sexual, Fatigue",1,1.67
+"Visual, Balance",1,1.67

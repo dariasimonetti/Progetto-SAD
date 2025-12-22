@@ -1,7 +1,7 @@
 # ============================================================================
 # Script: 03_cleaning.R
 # Descrizione: Cleaning, standardizzazione e rinomina colonne
-# Autore:  Daria-Simonetti
+# Autore:  Daria Simonetti
 # ============================================================================
 
 source("scripts/01_setup.R")
@@ -13,7 +13,7 @@ cat("\nCaricamento dati grezzi\n")
 
 df <- readRDS("outputs/data/raw_import.rds")
 
-cat("   Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
+cat("Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
 
 
 # 2. INIZIALIZZAZIONE CLEANING LOG
@@ -174,7 +174,7 @@ if (length(edss_changed) > 0) {
 }
 
 # Verifica finale
-cat("   Range EDSS:", min(df$edss, na.rm = TRUE), "-", max(df$edss, na.rm = TRUE), "\n")
+cat("Range EDSS:", min(df$edss, na.rm = TRUE), "-", max(df$edss, na.rm = TRUE), "\n")
 
 
 # 6. REGOLA 4:  String cleaning
@@ -399,5 +399,3 @@ log_summary <- cleaning_log %>%
   arrange(desc(n_operazioni))
 
 print(as.data.frame(log_summary), row.names = FALSE)
-
-# --- Fine script ---

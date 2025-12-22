@@ -1,7 +1,7 @@
 # ============================================================================
 # Script: 02_importDataset.R
 # Descrizione: Import dati e controlli qualità (solo audit, no cleaning)
-# Autore:  Daria-Simonetti
+# Autore:  Daria Simonetti
 # ============================================================================
 
 source("scripts/01_setup.R")
@@ -134,7 +134,7 @@ if (length(mri_edss_col) > 0) {
     arrange(desc(n))
   print(as.data.frame(counts), row.names = FALSE)
 } else {
-  cat("   ⚠️ Colonna MRI-EDSS non trovata\n")
+  cat("Colonna MRI-EDSS non trovata\n")
   cat("   Colonne disponibili contenenti 'mri' o 'edss':\n")
   cat("   ", paste(names(df)[grepl("mri|edss", names(df), ignore.case = TRUE)], collapse = ", "), "\n")
 }
@@ -159,7 +159,7 @@ if (! is.na(age_col) && !is.na(onset_col)) {
     filter(!! sym(onset_col) > !!sym(age_col))
   
   if (nrow(anomalies) > 0) {
-    cat("⚠️ Trovate", nrow(anomalies), "righe con age_of_onset > age:\n\n")
+    cat("Trovate", nrow(anomalies), "righe con age_of_onset > age:\n\n")
     
     # Cerca colonna ID (potrebbe essere 'id', 'patient_id', 'cod', etc.)
     id_col <- names(df)[grepl("^id$|patient.*id|^cod", names(df), ignore.case = TRUE)]
@@ -174,10 +174,10 @@ if (! is.na(age_col) && !is.na(onset_col)) {
     
     print(as.data.frame(anomalies_display), row.names = FALSE)
   } else {
-    cat("✅ Nessuna anomalia trovata (age_of_onset <= age per tutte le righe)\n")
+    cat("Nessuna anomalia trovata (age_of_onset <= age per tutte le righe)\n")
   }
 } else {
-  cat("⚠️ Colonne 'age' o 'age_of_onset' non trovate\n")
+  cat("Colonne 'age' o 'age_of_onset' non trovate\n")
   cat("Colonne disponibili:\n")
   cat(paste(" -", names(df), collapse = "\n"), "\n")
 }
@@ -216,7 +216,7 @@ if ("gender" %in% names(df)) {
     }
   }
 } else {
-  cat("⚠️ Colonna 'gender' non trovata\n")
+  cat("Colonna 'gender' non trovata\n")
 }
 
 # --- Fine report ---
