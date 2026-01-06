@@ -1,0 +1,40 @@
+variable,class,n_missing,pct_missing,n_unique,example_values
+age,numeric,0,0,33,15; 16; ...; 54; 56
+age_of_onset,numeric,0,0,28,8; 14; ...; 51; 52
+binary_sum,integer,0,0,11,0; 1; ...; 9; 10
+bowel_bladder,numeric,0,0,2,0; 1
+brain_stem,numeric,0,0,2,0; 1
+cerebella,numeric,0,0,2,0; 1
+comorbidity,factor,0,0,2,No; Yes
+coordination,numeric,0,0,2,0; 1
+disease_duration,numeric,0,0,12,0; 1; ...; 14; 21
+edss,numeric,0,0,12,0; 0.5; ...; 5; 6
+edss_group,factor,0,0,3,Lieve (0-2.5); Moderato (3-5.5); Severo (6-10)
+gait,numeric,0,0,2,0; 1
+gender,factor,1,1.7,2,F; M
+id,numeric,0,0,60,1; 2; ...; 59; 60
+medicine,factor,0,0,5,Betaferon; Rebif; Gelenia; Tysabri; Avonex
+mental,numeric,0,0,2,0; 1
+mental_state,numeric,0,0,2,0; 1
+mobility,numeric,0,0,2,0; 1
+motor_system,numeric,0,0,2,0; 1
+mri_edss_diff,factor,0,0,2,No; Yes
+nystagmus,numeric,0,0,2,0; 1
+ocular_move,numeric,0,0,2,0; 1
+optic_disc,numeric,0,0,2,0; 1
+present_balance,integer,0,0,2,0; 1
+present_behavioural,integer,0,0,2,0; 1
+present_fatigue,integer,0,0,2,0; 1
+present_motor,integer,0,0,2,0; 1
+present_pain,integer,0,0,2,0; 1
+present_sensory,integer,0,0,2,0; 1
+present_sexual,integer,0,0,2,0; 1
+present_visual,integer,0,0,2,0; 1
+pyramidal,numeric,0,0,2,0; 1
+sensory,numeric,0,0,2,0; 1
+sensory_system,numeric,0,0,2,0; 1
+speech,numeric,0,0,2,0; 1
+sphincters,numeric,0,0,2,0; 1
+swallowing,numeric,0,0,2,0; 1
+symptom,factor,0,0,13,"Sensory; Visual; Motor; Balance; Motor, Visual; ..."
+visual,numeric,0,0,2,0; 1

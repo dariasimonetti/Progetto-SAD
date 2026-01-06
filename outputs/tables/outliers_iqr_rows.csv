@@ -1,0 +1,4 @@
+row_id,variable,value,lower,upper
+55,disease_duration,21,-6,10
+54,disease_duration,14,-6,10
+1,disease_duration,13,-6,10

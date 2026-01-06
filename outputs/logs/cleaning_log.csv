@@ -1,24 +1,24 @@
 timestamp,id,field,old_value,new_value,rule
-2025-12-20T10:57:55Z,25,gender,N,NA,Regola 1: gender 'N' -> NA
-2025-12-20T10:57:55Z,40,age,15,17,Regola 2: swap age/onset (diff=2)
-2025-12-20T10:57:55Z,40,age_of_onset,17,15,Regola 2: swap age/onset (diff=2)
-2025-12-20T10:57:55Z,7,presenting_symptom,Motor & Visual,"Motor, Visual",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,9,presenting_symptom,Motore,Motor,Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,10,presenting_symptom,Motor & Behavioural,"Motor, Behavioural",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,12,presenting_symptom,Motor & Visual,"Motor, Visual",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,24,presenting_symptom,Sensory & Visual,"Sensory, Visual",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,29,presenting_symptom,Visual & Balance,"Visual, Balance",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,38,presenting_symptom,Balance &Motor,"Balance, Motor",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,40,presenting_symptom,Sensory &Motor,"Sensory, Motor",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,43,presenting_symptom,Sensory & Motor,"Sensory, Motor",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,44,presenting_symptom,"Sensory & Visual ,Balance , Motor, Sexual,Fatigue","Sensory, Visual, Balance, Motor, Sexual, Fatigue",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,54,presenting_symptom,Sensory & Visual,"Sensory, Visual",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,58,presenting_symptom,Motor & Sensory,"Motor, Sensory",Regola D: normalizzazione symptom
-2025-12-20T10:57:55Z,NA,column_name,does_the_time_difference_between_mri_acquisition_and_edss_two_months,mri_edss_diff,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,dose_the_patient_has_co_moroidity,comorbidity,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,types_of_medicines,medicine,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,presenting_symptom,symptom,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,bowel_and_bladder_function,bowel_bladder,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,optic_discs,optic_disc,Rinomina colonna
-2025-12-20T10:57:55Z,NA,column_name,ocular_movement,ocular_move,Rinomina colonna
-2025-12-20T10:57:55Z,NA,fields,constant (all 0),REMOVED,Near-zero variance:  colonna costante rimossa
+2026-01-05T16:33:39Z,25,gender,N,NA,Regola 1: gender 'N' -> NA
+2026-01-05T16:33:39Z,40,age,15,17,Regola 2: swap age/onset (diff=2)
+2026-01-05T16:33:39Z,40,age_of_onset,17,15,Regola 2: swap age/onset (diff=2)
+2026-01-05T16:33:39Z,7,presenting_symptom,Motor & Visual,"Motor, Visual",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,9,presenting_symptom,Motore,Motor,Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,10,presenting_symptom,Motor & Behavioural,"Motor, Behavioural",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,12,presenting_symptom,Motor & Visual,"Motor, Visual",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,24,presenting_symptom,Sensory & Visual,"Sensory, Visual",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,29,presenting_symptom,Visual & Balance,"Visual, Balance",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,38,presenting_symptom,Balance &Motor,"Balance, Motor",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,40,presenting_symptom,Sensory &Motor,"Sensory, Motor",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,43,presenting_symptom,Sensory & Motor,"Sensory, Motor",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,44,presenting_symptom,"Sensory & Visual ,Balance , Motor, Sexual,Fatigue","Sensory, Visual, Balance, Motor, Sexual, Fatigue",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,54,presenting_symptom,Sensory & Visual,"Sensory, Visual",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,58,presenting_symptom,Motor & Sensory,"Motor, Sensory",Regola D: normalizzazione symptom
+2026-01-05T16:33:39Z,NA,column_name,does_the_time_difference_between_mri_acquisition_and_edss_two_months,mri_edss_diff,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,dose_the_patient_has_co_moroidity,comorbidity,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,types_of_medicines,medicine,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,presenting_symptom,symptom,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,bowel_and_bladder_function,bowel_bladder,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,optic_discs,optic_disc,Rinomina colonna
+2026-01-05T16:33:39Z,NA,column_name,ocular_movement,ocular_move,Rinomina colonna
+2026-01-05T16:33:39Z,NA,fields,constant (all 0),REMOVED,Near-zero variance:  colonna costante rimossa

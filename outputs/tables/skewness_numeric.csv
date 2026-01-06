@@ -1,0 +1,6 @@
+variable,n_valid,n_na,skewness
+age,60,0,0.108
+age_of_onset,60,0,0.029
+disease_duration,60,0,2.198
+edss,60,0,0.491
+binary_sum,60,0,0.286

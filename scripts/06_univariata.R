@@ -166,7 +166,7 @@ if (length(presenting_binary) > 0) {
   
 } else {
   cat("Nessuna colonna present_* trovata nel dataset\n")
-  prevalence_presenting <- NULL
+  freq_presenting <- NULL
 }
 
 
@@ -397,7 +397,7 @@ p_freq_clinical <- freq_clinical %>%
   theme_minimal() +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("outputs/figures/bar_frequency_clinical_binary.png", plot = p_prev_clinical, 
+ggsave("outputs/figures/bar_frequency_clinical_binary.png", plot = p_freq_clinical, 
        width = 9, height = 7, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_frequency_clinical_binary.png")
 
@@ -405,7 +405,7 @@ saved_png <- c(saved_png, "outputs/figures/bar_frequency_clinical_binary.png")
 # Presenting
 if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
   
-  p_prev_presenting <- prevalence_presenting %>%
+  p_freq_presenting <- freq_presenting %>%
     mutate(feature = fct_reorder(feature, perc_1)) %>%
     ggplot(aes(x = feature, y = perc_1)) +
     geom_col(fill = project_colors[2], alpha = 0.8) +
@@ -421,7 +421,7 @@ if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
     theme_minimal() +
     theme(plot.title = element_text(face = "bold"))
   
-  ggsave("outputs/figures/bar_frequency_presenting.png", plot = p_prev_presenting, 
+  ggsave("outputs/figures/bar_frequency_presenting.png", plot = p_freq_presenting, 
          width = 9, height = 7, dpi = 300)
   saved_png <- c(saved_png, "outputs/figures/bar_frequency_presenting.png")
   

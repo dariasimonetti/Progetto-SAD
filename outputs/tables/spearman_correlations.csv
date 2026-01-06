@@ -1,0 +1,6 @@
+x,y,n,rho,p_value
+age,edss,60,0.209,0.1085
+age_of_onset,edss,60,0.199,0.1276
+disease_duration,edss,60,0.209,0.1089
+log_disease_duration,edss,60,0.209,0.1089
+binary_sum,edss,60,0.74,0
