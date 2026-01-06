@@ -86,7 +86,7 @@ feature_selection <- freq_df %>%
     )
   )
 
-# Salva lista completa
+# lista completa
 features_all <- feature_selection %>%
   mutate(set = "all") %>%
   select(feature, set, reason)
@@ -94,7 +94,7 @@ features_all <- feature_selection %>%
 write_csv(features_all, "outputs/tables/features_jaccard_all.csv")
 saved_csv <- c(saved_csv, "outputs/tables/features_jaccard_all.csv")
 
-# Salva lista filtrata
+# lista filtrata
 features_filtered <- feature_selection %>%
   filter(reason == "kept") %>%
   mutate(set = "filtered") %>%
@@ -104,7 +104,7 @@ write_csv(features_filtered, "outputs/tables/features_jaccard_filtered.csv")
 saved_csv <- c(saved_csv, "outputs/tables/features_jaccard_filtered.csv")
 
 
-# Riepilogo filtro
+# riepilogo filtro
 n_kept <- sum(feature_selection$reason == "kept")
 n_dropped_low <- sum(feature_selection$reason == "dropped_low_freq")
 n_dropped_high <- sum(feature_selection$reason == "dropped_high_freq")
@@ -151,7 +151,7 @@ cat("Dimensioni X_bin:", nrow(X_bin), "x", ncol(X_bin), "\n")
 # Calcola distanza Jaccard con vegan
 jaccard_dist <- vegdist(X_bin, method = "jaccard", binary = TRUE)
 
-# Converti in matrice
+# matrice
 jaccard_mat <- as.matrix(jaccard_dist)
 
 # Aggiungi row_id come nomi
@@ -177,7 +177,7 @@ cat("Media distanza:", round(mean(jaccard_dist), 3), "\n")
 hc <- hclust(as.dist(jaccard_mat), method = "average")
 order_idx <- hc$order
 
-# Riordina matrice
+# Matrice ordibata
 jaccard_mat_ordered <- jaccard_mat[order_idx, order_idx]
 
 # Trasforma in long per ggplot
@@ -198,13 +198,13 @@ p_heatmap <- ggplot(jaccard_long, aes(x = patient_a, y = patient_b, fill = dista
     low = project_colors[1], 
     high = project_colors[6],
     limits = c(0, 1),
-    name = "Jaccard\nDistance"
+    name = "Distanza\nJaccard"
   ) +
   labs(
-    title = "Jaccard Distance Matrix (Patients)",
-    subtitle = "Ordered by hierarchical clustering (average linkage)",
-    x = "Patient",
-    y = "Patient"
+    title = "Matrice delle distanze di Jaccard (pazienti)",
+    subtitle = "Ordinati per raggruppamento gerarchico (collegamento medio)",
+    x = "Paziente",
+    y = "Paziente"
   ) +
   theme_minimal() +
   theme(
@@ -226,11 +226,11 @@ saved_png <- c(saved_png, "outputs/figures/heatmap_jaccard_patients.png")
 # PCoA con cmdscale
 mds_result <- cmdscale(as.dist(jaccard_mat), k = 2, eig = TRUE)
 
-# Estrai coordinate
+# Coordinate
 mds_coords <- as.data.frame(mds_result$points)
 names(mds_coords) <- c("Dim1", "Dim2")
 
-# Aggiungi row_id e variabili di profiling
+# Row_id e variabili di profiling
 mds_coords <- mds_coords %>%
   mutate(
     row_id = df$row_id,
@@ -243,15 +243,15 @@ mds_coords <- mds_coords %>%
 eig_values <- mds_result$eig
 var_explained <- round(eig_values[1:2] / sum(eig_values[eig_values > 0]) * 100, 1)
 
-cat("   Varianza spiegata Dim1:", var_explained[1], "%\n")
-cat("   Varianza spiegata Dim2:", var_explained[2], "%\n")
+cat("Varianza spiegata Dim1:", var_explained[1], "%\n")
+cat("Varianza spiegata Dim2:", var_explained[2], "%\n")
 
 write_csv(mds_coords, "outputs/tables/jaccard_cmdscale_2d.csv")
 saved_csv <- c(saved_csv, "outputs/tables/jaccard_cmdscale_2d.csv")
 
 # --- Grafico scatter colorato per EDSS ---
 
-# Crea gruppi EDSS per leggibilità
+# Gruppi EDSS 
 mds_coords <- mds_coords %>%
   mutate(
     edss_group = cut(edss, 
@@ -272,8 +272,8 @@ p_mds_edss <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
     name = "Binary Sum"
   ) +
   labs(
-    title = "PCoA on Jaccard Distance (Binary Features)",
-    subtitle = paste0("Dim1: ", var_explained[1], "% | Dim2: ", var_explained[2], "% variance explained"),
+    title = "PCoA sulla distanza di Jaccard (caratteristiche binarie)",
+    subtitle = paste0("Dim1: ", var_explained[1], "% | Dim2: ", var_explained[2], "% varianza spiegata"),
     x = paste0("Dimension 1 (", var_explained[1], "%)"),
     y = paste0("Dimension 2 (", var_explained[2], "%)")
   ) +
@@ -301,8 +301,8 @@ p_mds_groups <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
     name = "Binary Sum"
   ) +
   labs(
-    title = "PCoA on Jaccard Distance (Binary Features)",
-    subtitle = paste0("Colored by EDSS groups | Dim1: ", var_explained[1], 
+    title = "PCoA sulla distanza di Jaccard (caratteristiche binarie)",
+    subtitle = paste0("Colorato per gruppi EDSS | Dim1: ", var_explained[1], 
                       "% | Dim2: ", var_explained[2], "%"),
     x = paste0("Dimension 1 (", var_explained[1], "%)"),
     y = paste0("Dimension 2 (", var_explained[2], "%)")
@@ -318,7 +318,7 @@ ggsave("outputs/figures/cmdscale_jaccard_edss_groups.png", plot = p_mds_groups,
 saved_png <- c(saved_png, "outputs/figures/cmdscale_jaccard_edss_groups.png")
 
 
-#PROFILING DESCRITTIVO "LEGGERO"
+#PROFILING DESCRITTIVO LEGGERO
 
 
 # --- Creazione edss_bin per profiling ---
@@ -346,10 +346,10 @@ p_binary_edss <- df %>%
     values = c("low" = project_colors[3], "mid" = project_colors[2], "high" = project_colors[6])
   ) +
   labs(
-    title = "Binary Sum by EDSS Groups",
+    title = "Binary Sum per gruppi EDSS",
     subtitle = "Low (0-2), Mid (2.5-4), High (4.5+)",
     x = "EDSS Group",
-    y = "Binary Sum (count of positive indicators)"
+    y = "Binary Sum (numero di indicatori positivi)"
   ) +
   theme_minimal() +
   theme(
@@ -371,7 +371,7 @@ top5_features <- intersect(top5_features, names(df))
 
 if (length(top5_features) >= 3) {
   
-  # Calcola prevalenza per edss_bin
+  # Calcola frequenza per edss_bin
   freq_by_edss <- df %>%
     filter(! is.na(edss_bin)) %>%
     select(edss_bin, all_of(top5_features)) %>%
@@ -399,10 +399,10 @@ if (length(top5_features) >= 3) {
       name = "EDSS Group"
     ) +
     labs(
-      title = "Frequency of Top Clinical Features by EDSS Group",
-      subtitle = "Features most associated with disability progression",
+      title = "Frequenza delle principali caratteristiche cliniche per gruppo EDSS",
+      subtitle = "Caratteristiche maggiormente associate alla progressione della disabilità",
       x = "Clinical Feature",
-      y = "Frequency (%)"
+      y = "Frequenza (%)"
     ) +
     theme_minimal() +
     theme(
@@ -464,10 +464,10 @@ for (f in saved_png) {
 
 cat("
 Note: 
-   - Questo script prepara i dati per il clustering ma NON esegue
+   - Preparo i dati per il clustering ma NON eseguo
      un clustering finale con scelta di k ottimale. 
    - La matrice di distanza Jaccard e le coordinate PCoA sono
-     pronte per essere usate in uno script successivo di clustering.
+     pronte per essere usate in un successivo clustering.
    - Le feature rare/ubiquitarie sono state filtrate per evitare
      che dominino o siano irrilevanti nel calcolo delle distanze. 
 ")

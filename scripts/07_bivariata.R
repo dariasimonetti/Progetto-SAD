@@ -240,7 +240,7 @@ bivariate_tests <- tibble(
 )
 
 # --- Wilcoxon per gender ---
-cat("\nTest Wilcoxon:  EDSS ~ gender.. .\n")
+cat("\nTest Wilcoxon:  EDSS ~ gender...\n")
 
 df_gender <- df %>% 
   filter(! is.na(gender) & !is.na(edss) & gender %in% c("F", "M"))
@@ -312,7 +312,7 @@ if (nrow(df_medicine) >= 10) {
   ))
 }
 
-# Aggiungi p-value aggiustato (BH)
+# p-value aggiustato (BH)
 bivariate_tests <- bivariate_tests %>%
   mutate(p_adj_bh = round(p.adjust(p_value, method = "BH"), 4))
 
@@ -323,7 +323,6 @@ cat("outputs/tables/bivariate_tests_edss_groups.csv\n")
 print(bivariate_tests)
 
 # --- Boxplot per ogni variabile categorica ---
-cat("\nCreazione boxplot EDSS per gruppi.. .\n")
 
 # Funzione per boxplot + jitter
 create_boxplot <- function(data, x_var, y_var = "edss", rotate_x = FALSE) {
@@ -346,7 +345,7 @@ create_boxplot <- function(data, x_var, y_var = "edss", rotate_x = FALSE) {
       size = 2
     ) +
     labs(
-      title = paste("EDSS by", title_x),
+      title = paste("EDSS per", title_x),
       x = title_x,
       y = "EDSS Score"
     ) +
@@ -378,7 +377,7 @@ ggsave("outputs/figures/box_edss_by_mri_edss_diff.png", plot = p_mri,
        width = 8, height = 5, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/box_edss_by_mri_edss_diff.png")
 
-# Medicine (ordina per frequenza, ruota etichette)
+# Medicine (ordinate per frequenza, ruota etichette)
 p_medicine <- df %>%
   filter(!is.na(medicine) & !is.na(edss)) %>%
   mutate(medicine = fct_infreq(medicine)) %>%
@@ -499,7 +498,6 @@ n_skipped <- sum(wilcox_results$note == "skipped_low_counts")
 cat("   Testate:", n_tested, "| Skipped:", n_skipped, "\n")
 
 # --- Grafico top 10 median diff ---
-cat("\nTop 10 binary features by EDSS median difference.. .\n")
 
 top10_binary <- wilcox_results %>%
   filter(note == "tested") %>%
@@ -516,7 +514,7 @@ if (nrow(top10_binary) > 0) {
                  color = project_colors[3], linewidth = 1) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
     labs(
-      title = "Top 10 Binary Features:  EDSS Median Difference",
+      title = "Top 10 Binary Features:  Differenza mediana EDSS",
       subtitle = "Differenza tra mediana EDSS (gruppo=1) e mediana EDSS (gruppo=0)",
       x = "Median EDSS Difference (group 1 - group 0)",
       y = "Feature"
@@ -534,13 +532,13 @@ if (nrow(top10_binary) > 0) {
 
 # --- G1) Selezione feature binarie ---
 
-# Costruisci dataframe binario
+# Costruisco dataframe binario
 bin_df <- df %>%
   select(all_of(all_binary)) %>%
   mutate(across(everything(), as.numeric))
 
 # Nota: NA -> 0 (nel dataset attuale n_na = 0, quindi non cambia)
-# Commento: se ci fossero NA, questa scelta potrebbe influenzare le associazioni
+# se ci fossero NA, questa scelta potrebbe influenzare le associazioni
 bin_df[is.na(bin_df)] <- 0
 
 cat("   Dimensioni:", nrow(bin_df), "x", ncol(bin_df), "\n")
@@ -586,7 +584,7 @@ p_phi_heat <- ggplot(phi_long, aes(x = feature_a, y = feature_b, fill = phi)) +
     name = "PHI"
   ) +
   labs(
-    title = "PHI Correlation Matrix (Binary Features)",
+    title = "Matrice di correlazione PHI (caratteristiche binarie)",
     x = "", y = ""
   ) +
   theme_minimal() +
@@ -618,7 +616,7 @@ jaccard_similarity <- function(a, b) {
   return(n11 / denom)
 }
 
-# Costruisci matrice Jaccard
+# Costruisco matrice Jaccard
 feature_names <- names(bin_df_filtered)
 n_features <- length(feature_names)
 
@@ -635,7 +633,7 @@ for (i in 1:n_features) {
   }
 }
 
-# Salva matrice
+# Salvataggio matrice
 jaccard_df <- as.data.frame(jaccard_mat) %>%
   mutate(feature = rownames(jaccard_mat)) %>%
   select(feature, everything())
@@ -658,8 +656,8 @@ p_jaccard_heat <- ggplot(jaccard_long, aes(x = feature_a, y = feature_b, fill = 
     na.value = "gray90"
   ) +
   labs(
-    title = "Jaccard Similarity Matrix (Binary Features)",
-    subtitle = "Co-occurrence of positive values (1s)",
+    title = "Matrice di similarità di Jaccard (caratteristiche binarie)",
+    subtitle = "Co-occorrenza di valori positivi (1)",
     x = "", y = ""
   ) +
   theme_minimal() +
