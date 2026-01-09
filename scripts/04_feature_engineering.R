@@ -94,33 +94,46 @@ cat("\n   Distribuzione binary_sum:\n")
 print(table(df$binary_sum, useNA = "ifany"))
 
 
-# 4. CREAZIONE EDSS_GROUP (categorizzazione EDSS)
+# 4. CREAZIONE VARIABILI EDSS_BIN E EDSS_3CLASS
 
-# Definizione dei cut-off per EDSS
-# - Lieve: 0-2.5 (deambulazione normale, disabilità minima)
-# - Moderato: 3-5.5 (limitazioni nella deambulazione)
-# - Severo: 6-10 (necessità di ausili per camminare o peggio)
+# Definizione dei cut-off per EDSS_BIN
+# Cut-off professore: <=2.0 vs >2.0
 
 df <- df %>%
   mutate(
-    edss_group = cut(
-      edss,
-      breaks = c(-Inf, 2.5, 5.5, Inf),
-      labels = c("Lieve (0-2.5)", "Moderato (3-5.5)", "Severo (6-10)"),
-      include.lowest = TRUE,
-      right = TRUE
+    edss_bin = case_when(
+      is.na(edss) ~ NA_character_,
+      edss <= 2.0 ~ "class0 (<=2.0)",
+      edss > 2.0 ~ "class1 (>2.0)"
     ),
-    edss_group = factor(edss_group)
+    edss_bin = factor(edss_bin, levels = c("class0 (<=2.0)", "class1 (>2.0)"))
   )
 
+cat("edss_bin:  class0 (<=2.0) vs class1 (>2.0)\n")
+cat("\n   Distribuzione edss_bin:\n")
+print(table(df$edss_bin, useNA = "ifany"))
 
-cat("\n   Distribuzione edss_group:\n")
-print(table(df$edss_group, useNA = "ifany"))
+# Definizione dei cut-off per EDSS_3CLASS
+# Cut-off professore: normal (0-2.0), mild (2.5-4.0), severe (>4.0)
 
+df <- df %>%
+  mutate(
+    edss_3class = case_when(
+      is.na(edss) ~ NA_character_,
+      edss <= 2.0 ~ "normal (0-2.0)",
+      edss > 2.0 & edss <= 4.0 ~ "mild (2.5-4.0)",
+      edss > 4.0 ~ "severe (>4.0)"
+    ),
+    edss_3class = factor(edss_3class, levels = c("normal (0-2.0)", "mild (2.5-4.0)", "severe (>4.0)"))
+  )
+
+cat("edss_3class: normal (0-2.0), mild (2.5-4.0), severe (>4.0)\n")
+cat("\n   Distribuzione edss_3class:\n")
+print(table(df$edss_3class, useNA = "ifany"))
 
 # 5. RIEPILOGO NUOVE VARIABILI
 
-new_vars <- c("disease_duration", "binary_sum", "edss_group")
+new_vars <- c("disease_duration", "binary_sum", "edss_bin", "edss_3class")
 
 for (var in new_vars) {
   cat("\n>>>", var, ":\n")
@@ -154,16 +167,27 @@ binary_sum_counts <- df %>%
 
 write_csv(binary_sum_counts, "outputs/tables/binary_sum_counts.csv")
 
-# --- Distribuzione edss_group ---
-edss_group_counts <- df %>%
-  filter(!is.na(edss_group)) %>%
-  count(edss_group, name = "n") %>%
+# --- Distribuzione edss_bin ---
+edss_bin_counts <- df %>%
+  filter(! is.na(edss_bin)) %>%
+  count(edss_bin, name = "n") %>%
   mutate(
-    edss_group = as.character(edss_group),  # Converti factor -> character
+    edss_bin = as.character(edss_bin),
     perc = round(n / sum(n) * 100, 2)
   )
 
-write_csv(edss_group_counts, "outputs/tables/edss_group_counts.csv")
+write_csv(edss_bin_counts, "outputs/tables/edss_bin_counts.csv")
+
+# --- Distribuzione edss_3class ---
+edss_3class_counts <- df %>%
+  filter(!is.na(edss_3class)) %>%
+  count(edss_3class, name = "n") %>%
+  mutate(
+    edss_3class = as.character(edss_3class),
+    perc = round(n / sum(n) * 100, 2)
+  )
+
+write_csv(edss_3class_counts, "outputs/tables/edss_3class_counts.csv")
 
 # ---Mini-report testuale ---
 
@@ -178,7 +202,8 @@ bs_range <- range(df$binary_sum, na.rm = TRUE)
 bs_mean <- mean(df$binary_sum, na.rm = TRUE)
 bs_na <- sum(is.na(df$binary_sum))
 
-edss_table <- table(df$edss_group, useNA = "ifany")
+edss_bin_table <- table(df$edss_bin, useNA = "ifany")
+edss_3class_table <- table(df$edss_3class, useNA = "ifany")
 
 # Scrivi report
 sink(report_path)
@@ -201,11 +226,22 @@ cat("Range:", bs_range[1], "-", bs_range[2], "\n")
 cat("Media:", round(bs_mean, 2), "\n")
 cat("NA:", bs_na, "(", round(bs_na / nrow(df) * 100, 2), "%)\n\n")
 
-cat("--- EDSS_GROUP ---\n")
-for (i in seq_along(edss_table)) {
-  level_name <- names(edss_table)[i]
-  level_n <- edss_table[i]
-  level_perc <- round(level_n / sum(edss_table) * 100, 2)
+cat("--- EDSS_BIN (Binary Classification) ---\n")
+cat("Cut-off: <=2.0 vs >2.0\n")
+for (i in seq_along(edss_bin_table)) {
+  level_name <- names(edss_bin_table)[i]
+  level_n <- edss_bin_table[i]
+  level_perc <- round(level_n / sum(edss_bin_table) * 100, 2)
+  cat(level_name, ":", level_n, "(", level_perc, "%)\n")
+}
+cat("\n")
+
+cat("--- EDSS_3CLASS (Multi-class Classification) ---\n")
+cat("Cut-off: normal (0-2.0), mild (2.5-4.0), severe (>4.0)\n")
+for (i in seq_along(edss_3class_table)) {
+  level_name <- names(edss_3class_table)[i]
+  level_n <- edss_3class_table[i]
+  level_perc <- round(level_n / sum(edss_3class_table) * 100, 2)
   cat(level_name, ":", level_n, "(", level_perc, "%)\n")
 }
 cat("\n")
@@ -236,7 +272,7 @@ cat("\n\nPrime 6 righe (variabili chiave):\n")
 cat("--------------------------------------------------------------------------------\n")
 
 df %>%
-  select(id, age, age_of_onset, disease_duration, edss, edss_group, binary_sum) %>%
+  select(id, age, age_of_onset, disease_duration, edss, edss_bin, edss_3class, binary_sum) %>%
   head() %>%
   print()
 

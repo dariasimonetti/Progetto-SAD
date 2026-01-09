@@ -1,0 +1,3 @@
+outcome,predictor,test,groups,n_total,statistic,p_value,p_value_label,note
+binary_sum,edss_bin,Wilcoxon,class0 (<=2.0) vs class1 (>2.0),60,135,3.4472955607426438e-6,<0.001,tested
+binary_sum,edss_3class,Kruskal-Wallis,"normal (0-2.0), mild (2.5-4.0), severe (>4.0)",60,21.78,1.8642909068649183e-5,<0.001,tested

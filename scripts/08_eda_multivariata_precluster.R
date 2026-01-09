@@ -235,9 +235,11 @@ mds_coords <- mds_coords %>%
   mutate(
     row_id = df$row_id,
     edss = df$edss,
-    binary_sum = df$binary_sum
+    binary_sum = df$binary_sum,
+    edss_bin = df$edss_bin,
+    edss_3class = df$edss_3class
   ) %>%
-  select(row_id, Dim1, Dim2, edss, binary_sum)
+  select(row_id, Dim1, Dim2, edss, binary_sum, edss_bin, edss_3class)
 
 # Varianza spiegata
 eig_values <- mds_result$eig
@@ -250,14 +252,6 @@ write_csv(mds_coords, "outputs/tables/jaccard_cmdscale_2d.csv")
 saved_csv <- c(saved_csv, "outputs/tables/jaccard_cmdscale_2d.csv")
 
 # --- Grafico scatter colorato per EDSS ---
-
-# Gruppi EDSS 
-mds_coords <- mds_coords %>%
-  mutate(
-    edss_group = cut(edss, 
-                     breaks = c(-Inf, 2, 4, Inf), 
-                     labels = c("Low (0-2)", "Mid (2.5-4)", "High (4.5+)"))
-  )
 
 # Scatter con gradiente EDSS
 p_mds_edss <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
@@ -288,13 +282,13 @@ ggsave("outputs/figures/cmdscale_jaccard_edss.png", plot = p_mds_edss,
 saved_png <- c(saved_png, "outputs/figures/cmdscale_jaccard_edss.png")
 
 # Versione alternativa con gruppi EDSS discreti
-p_mds_groups <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
-  geom_point(aes(color = edss_group, size = binary_sum), alpha = 0.7) +
+p_mds_3class <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
+  geom_point(aes(color = edss_3class, size = binary_sum), alpha = 0.7) +
   scale_color_manual(
-    values = c("Low (0-2)" = project_colors[3], 
-               "Mid (2.5-4)" = project_colors[2], 
-               "High (4.5+)" = project_colors[6]),
-    name = "EDSS Group"
+    values = c("normal (0-2.0)" = project_colors[3], 
+               "mild (2.5-4.0)" = project_colors[2], 
+               "severe (>4.0)" = project_colors[4]),
+    name = "EDSS 3-Class"
   ) +
   scale_size_continuous(
     range = c(2, 6),
@@ -302,7 +296,7 @@ p_mds_groups <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
   ) +
   labs(
     title = "PCoA sulla distanza di Jaccard (caratteristiche binarie)",
-    subtitle = paste0("Colorato per gruppi EDSS | Dim1: ", var_explained[1], 
+    subtitle = paste0("Colorato per EDSS 3-classi | Dim1: ", var_explained[1], 
                       "% | Dim2: ", var_explained[2], "%"),
     x = paste0("Dimension 1 (", var_explained[1], "%)"),
     y = paste0("Dimension 2 (", var_explained[2], "%)")
@@ -313,70 +307,68 @@ p_mds_groups <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
     legend.position = "right"
   )
 
-ggsave("outputs/figures/cmdscale_jaccard_edss_groups.png", plot = p_mds_groups,
+ggsave("outputs/figures/cmdscale_jaccard_edss_3class.png", plot = p_mds_3class,
        width = 10, height = 7, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/cmdscale_jaccard_edss_groups.png")
+saved_png <- c(saved_png, "outputs/figures/cmdscale_jaccard_edss_3class.png")
 
 
 #PROFILING DESCRITTIVO LEGGERO
 
 
-# --- Creazione edss_bin per profiling ---
+if ("edss_bin" %in% names(df)) {
+  
+  cat("Distribuzione edss_bin:\n")
+  print(table(df$edss_bin, useNA = "ifany"))
+  
+  p_binary_edss <- df %>%
+    filter(! is.na(edss_bin) & !is.na(binary_sum)) %>%
+    ggplot(aes(x = edss_bin, y = binary_sum, fill = edss_bin)) +
+    geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+    geom_jitter(width = 0.2, alpha = 0.5, size = 2) +
+    scale_fill_manual(
+      values = c("class0 (<=2.0)" = project_colors[3], 
+                 "class1 (>2.0)" = project_colors[4])
+    ) +
+    labs(
+      title = "Binary Sum per classi EDSS (binary)",
+      subtitle = "class0 (<=2.0) vs class1 (>2.0)",
+      x = "EDSS Binary Class",
+      y = "Binary Sum (numero di indicatori positivi)"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.position = "none"
+    )
+  
+  ggsave("outputs/figures/binary_sum_by_edss_bin.png", plot = p_binary_edss,
+         width = 8, height = 6, dpi = 300)
+  saved_png <- c(saved_png, "outputs/figures/binary_sum_by_edss_bin.png")
+  cat("outputs/figures/binary_sum_by_edss_bin.png\n")
+  
+} else {
+  cat("Colonna edss_bin non trovata nel dataset\n")
+}
 
-
-df <- df %>%
-  mutate(
-    edss_bin = cut(edss, 
-                   breaks = c(-Inf, 2, 4, Inf), 
-                   labels = c("low", "mid", "high"))
-  )
-
-cat("   Distribuzione edss_bin:\n")
-print(table(df$edss_bin, useNA = "ifany"))
-
-# --- Boxplot binary_sum ~ edss_bin ---
-
-
-p_binary_edss <- df %>%
-  filter(! is.na(edss_bin) & ! is.na(binary_sum)) %>%
-  ggplot(aes(x = edss_bin, y = binary_sum, fill = edss_bin)) +
-  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-  geom_jitter(width = 0.2, alpha = 0.5, size = 2) +
-  scale_fill_manual(
-    values = c("low" = project_colors[3], "mid" = project_colors[2], "high" = project_colors[6])
-  ) +
-  labs(
-    title = "Binary Sum per gruppi EDSS",
-    subtitle = "Low (0-2), Mid (2.5-4), High (4.5+)",
-    x = "EDSS Group",
-    y = "Binary Sum (numero di indicatori positivi)"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold"),
-    legend.position = "none"
-  )
-
-ggsave("outputs/figures/binary_sum_by_edss_bin.png", plot = p_binary_edss,
-       width = 8, height = 6, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/binary_sum_by_edss_bin.png")
-
-# --- Prevalenza top 5 feature per edss_bin ---
+# --- Frequenza top 5 feature per edss_3class (3 classi del professore) ---
 
 # Top 5 feature più associate a EDSS (dalla fase 6 / letteratura clinica)
 top5_features <- c("pyramidal", "motor_system", "coordination", "sphincters", "gait")
 
-# Verifica che esistono nel dataset
+# Verifica che esistano nel dataset
 top5_features <- intersect(top5_features, names(df))
 
-if (length(top5_features) >= 3) {
+if (length(top5_features) >= 3 && "edss_3class" %in% names(df)) {
   
-  # Calcola frequenza per edss_bin
+  cat("   Distribuzione edss_3class:\n")
+  print(table(df$edss_3class, useNA = "ifany"))
+  
+  # Calcola frequenza per edss_3class
   freq_by_edss <- df %>%
-    filter(! is.na(edss_bin)) %>%
-    select(edss_bin, all_of(top5_features)) %>%
-    pivot_longer(-edss_bin, names_to = "feature", values_to = "value") %>%
-    group_by(edss_bin, feature) %>%
+    filter(!is.na(edss_3class)) %>%
+    select(edss_3class, all_of(top5_features)) %>%
+    pivot_longer(-edss_3class, names_to = "feature", values_to = "value") %>%
+    group_by(edss_3class, feature) %>%
     summarise(
       n_1 = sum(value == 1, na.rm = TRUE),
       n_total = n(),
@@ -386,7 +378,7 @@ if (length(top5_features) >= 3) {
   
   # Barplot
   p_top5 <- ggplot(freq_by_edss, 
-                   aes(x = feature, y = freq, fill = edss_bin)) +
+                   aes(x = feature, y = freq, fill = edss_3class)) +
     geom_col(position = position_dodge(width = 0.8), width = 0.7, alpha = 0.8) +
     geom_text(
       aes(label = paste0(round(freq, 0), "%")),
@@ -395,12 +387,14 @@ if (length(top5_features) >= 3) {
       size = 3
     ) +
     scale_fill_manual(
-      values = c("low" = project_colors[3], "mid" = project_colors[2], "high" = project_colors[6]),
-      name = "EDSS Group"
+      values = c("normal (0-2.0)" = project_colors[3], 
+                 "mild (2.5-4.0)" = project_colors[2], 
+                 "severe (>4.0)" = project_colors[4]),
+      name = "EDSS 3-Class"
     ) +
     labs(
-      title = "Frequenza delle principali caratteristiche cliniche per gruppo EDSS",
-      subtitle = "Caratteristiche maggiormente associate alla progressione della disabilità",
+      title = "Frequenza delle principali caratteristiche cliniche per EDSS 3-classi",
+      subtitle = "normal (0-2.0), mild (2.5-4.0), severe (>4.0)",
       x = "Clinical Feature",
       y = "Frequenza (%)"
     ) +
@@ -411,12 +405,13 @@ if (length(top5_features) >= 3) {
     ) +
     ylim(0, 100)
   
-  ggsave("outputs/figures/top5_features_freq_by_edss_bin.png", plot = p_top5,
+  ggsave("outputs/figures/top5_features_freq_by_edss_3class.png", plot = p_top5,
          width = 10, height = 6, dpi = 300)
-  saved_png <- c(saved_png, "outputs/figures/top5_features_freq_by_edss_bin.png")
+  saved_png <- c(saved_png, "outputs/figures/top5_features_freq_by_edss_3class.png")
+  cat("outputs/figures/top5_features_freq_by_edss_3class.png\n")
   
 } else {
-  cat("Non abbastanza feature top5 nel dataset\n")
+  cat("Non abbastanza feature top5 o edss_3class non trovata\n")
 }
 
 

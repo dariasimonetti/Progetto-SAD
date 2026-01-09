@@ -10,6 +10,22 @@ df <- readRDS("outputs/data/data_complete.rds")
 
 cat("Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
 
+# Verifica dell'assenza di "N" in gender
+
+if ("gender" %in% names(df)) {
+  gender_n_count <- sum(df$gender == "N", na.rm = TRUE)
+  
+  if (gender_n_count > 0) {
+    cat("WARNING: Trovate", gender_n_count, "righe con gender = 'N'!\n")
+    cat("Distribuzione attuale gender:\n")
+    print(table(df$gender, useNA = "ifany"))
+  } else {
+    cat("Nessun valore 'N' in gender\n")
+  }
+} else {
+  cat("Colonna 'gender' non trovata nel dataset\n")
+}
+
 # DEFINIZIONE VARIABILI
 
 # Numeriche
@@ -17,7 +33,7 @@ numeric_vars <- c("age", "age_of_onset", "disease_duration", "edss", "binary_sum
 
 # Categoriche
 categorical_vars <- c("gender", "medicine", "mri_edss_diff", "comorbidity", 
-                      "edss_group", "symptom")
+                      "edss_bin", "edss_3class", "symptom")
 
 # Binarie cliniche
 clinical_binary <- c("pyramidal", "cerebella", "brain_stem", "sensory", 
@@ -338,11 +354,17 @@ ggsave("outputs/figures/bar_comorbidity_perc.png", plot = p_comorbidity,
        width = 6, height = 6, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_comorbidity_perc.png")
 
-# EDSS group (mantieni ordine livelli)
-p_edss_group <- plot_bar_perc(df, "edss_group", order_by_freq = FALSE)
-ggsave("outputs/figures/bar_edss_group_perc.png", plot = p_edss_group, 
+# EDSS bin (mantieni ordine livelli)
+p_edss_bin <- plot_bar_perc(df, "edss_bin", order_by_freq = FALSE)
+ggsave("outputs/figures/bar_edss_bin_perc.png", plot = p_edss_bin, 
        width = 8, height = 6, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/bar_edss_group_perc.png")
+saved_png <- c(saved_png, "outputs/figures/bar_edss_bin_perc.png")
+
+# EDSS 3class (mantieni ordine livelli)
+p_edss_3class <- plot_bar_perc(df, "edss_3class", order_by_freq = FALSE)
+ggsave("outputs/figures/bar_edss_3class_perc.png", plot = p_edss_3class, 
+       width = 8, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/bar_edss_3class_perc.png")
 
 # Symptom (molti livelli, ruota etichette)
 p_symptom <- plot_bar_perc(df, "symptom", order_by_freq = TRUE, 

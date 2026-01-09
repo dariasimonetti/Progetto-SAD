@@ -1,0 +1,5 @@
+predictor,test,groups,n_total,statistic,p_value,p_adj_bh
+gender,Wilcoxon,F vs M,60,297,0.8849,0.8849
+comorbidity,Wilcoxon,No vs Yes,60,259.5,0.4102,0.8849
+mri_edss_diff,Wilcoxon,No vs Yes,60,459.5,0.7981,0.8849
+medicine,Kruskal-Wallis,"Betaferon, Rebif, Gelenia, Tysabri, Avonex",60,3.62,0.4606,0.8849

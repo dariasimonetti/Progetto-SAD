@@ -1,7 +1,7 @@
 
 --------------------------------------------------------------------------------
                          DATA QUALITY REPORT
-                          2026-01-05 17:31:52 
+                          2026-01-09 18:39:19 
 --------------------------------------------------------------------------------
 
 File sorgente:  datasets/Patient_info_table1.xlsx 
@@ -59,21 +59,15 @@ Column type frequency:
 ________________________         
 Group variables            None  
 
-── Variable type: character ─────────────────────────────────────────────────────────────────────────────────────────────────
-  skim_variable                                                        n_missing complete_rate min max empty n_unique
-1 gender                                                                       0             1   1   1     0        3
-2 does_the_time_difference_between_mri_acquisition_and_edss_two_months         0             1   2   3     0        2
-3 types_of_medicines                                                           0             1   5   9     0        5
-4 presenting_symptom                                                           0             1   4  49     0       16
-5 dose_the_patient_has_co_moroidity                                            0             1   2   3     0        2
-  whitespace
-1          0
-2          0
-3          0
-4          0
-5          0
+── Variable type: character ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  skim_variable                                                        n_missing complete_rate min max empty n_unique whitespace
+1 gender                                                                       0             1   1   1     0        3          0
+2 does_the_time_difference_between_mri_acquisition_and_edss_two_months         0             1   2   3     0        2          0
+3 types_of_medicines                                                           0             1   5   9     0        5          0
+4 presenting_symptom                                                           0             1   4  49     0       16          0
+5 dose_the_patient_has_co_moroidity                                            0             1   2   3     0        2          0
 
-── Variable type: numeric ───────────────────────────────────────────────────────────────────────────────────────────────────
+── Variable type: numeric ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
    skim_variable              n_missing complete_rate    mean     sd p0  p25  p50  p75 p100 hist 
  1 id                                 0             1 30.5    17.5    1 15.8 30.5 45.2   60 ▇▇▇▇▇
  2 age                                0             1 32.6    12.1   15 20   33   42.2   56 ▇▃▆▆▂

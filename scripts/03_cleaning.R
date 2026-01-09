@@ -9,8 +9,6 @@ source("scripts/01_setup.R")
 
 # 1. CARICAMENTO DATI
 
-cat("\nCaricamento dati grezzi\n")
-
 df <- readRDS("outputs/data/raw_import.rds")
 
 cat("Righe:", nrow(df), "| Colonne:", ncol(df), "\n")
@@ -46,22 +44,41 @@ add_log <- function(log, id = NA_integer_, field, old_value, new_value, rule) {
 gender_n_rows <- which(str_to_upper(df$gender) == "N")
 
 if (length(gender_n_rows) > 0) {
+  
+  # Calcolo moda tra "F" e "M"
+  gender_valid <- df$gender[str_to_upper(df$gender) %in% c("F", "M")]
+  
+  if (length(gender_valid)>0){
+    # Conta frequenze
+    freq_table <- table(str_to_upper(gender_valid))
+    # Identifica la moda (più frequente)
+    mode_value <- names(freq_table)[which.max(freq_table)]
+    
+    rule_desc <- paste0("Regola 1: gender 'N' -> mode(", mode_value, ")")
+  } else {
+    # Fallback: se non ci sono F/M validi, usa "F"
+    mode_value <- "F"
+    rule_desc <- "Regola 1: gender 'N' -> F (fallback, no F/M)"
+    cat("Nessun valore F/M valido trovato - fallback a 'F'\n")
+  }
+  
   for (row_idx in gender_n_rows) {
     cleaning_log <- add_log(
       cleaning_log,
       id = df$id[row_idx],
       field = "gender",
       old_value = df$gender[row_idx],
-      new_value = "NA",
-      rule = "Regola 1: gender 'N' -> NA"
+      new_value = mode_value,
+      rule = rule_desc
     )
   }
   
   # Applica la correzione
   df <- df %>%
-    mutate(gender = if_else(str_to_upper(gender) == "N", NA_character_, gender))
+    mutate(gender = if_else(str_to_upper(gender) == "N", mode_value, gender))
   
-  cat("Convertite", length(gender_n_rows), "righe con gender='N' in NA\n")
+  cat("Convertite", length(gender_n_rows), "righe con gender='N' in '", 
+      mode_value, "'\n", sep = "")
 } else {
   cat("Nessuna riga con gender='N' trovata\n")
 }

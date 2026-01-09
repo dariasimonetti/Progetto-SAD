@@ -9,9 +9,10 @@ comorbidity,factor,0,0,2,No; Yes
 coordination,numeric,0,0,2,0; 1
 disease_duration,numeric,0,0,12,0; 1; ...; 14; 21
 edss,numeric,0,0,12,0; 0.5; ...; 5; 6
-edss_group,factor,0,0,3,Lieve (0-2.5); Moderato (3-5.5); Severo (6-10)
+edss_3class,factor,0,0,3,normal (0-2.0); mild (2.5-4.0); severe (>4.0)
+edss_bin,factor,0,0,2,class0 (<=2.0); class1 (>2.0)
 gait,numeric,0,0,2,0; 1
-gender,factor,1,1.7,2,F; M
+gender,factor,0,0,2,F; M
 id,numeric,0,0,60,1; 2; ...; 59; 60
 medicine,factor,0,0,5,Betaferon; Rebif; Gelenia; Tysabri; Avonex
 mental,numeric,0,0,2,0; 1

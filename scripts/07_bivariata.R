@@ -316,10 +316,10 @@ if (nrow(df_medicine) >= 10) {
 bivariate_tests <- bivariate_tests %>%
   mutate(p_adj_bh = round(p.adjust(p_value, method = "BH"), 4))
 
-write_csv(bivariate_tests, "outputs/tables/bivariate_tests_edss_groups.csv")
-saved_csv <- c(saved_csv, "outputs/tables/bivariate_tests_edss_groups.csv")
+write_csv(bivariate_tests, "outputs/tables/bivariate_tests_edss_vs_categorical.csv")
+saved_csv <- c(saved_csv, "outputs/tables/bivariate_tests_edss_vs_categorical.csv")
 
-cat("outputs/tables/bivariate_tests_edss_groups.csv\n")
+cat("outputs/tables/bivariate_tests_edss_vs_categorical.csv\n")
 print(bivariate_tests)
 
 # --- Boxplot per ogni variabile categorica ---
@@ -399,6 +399,204 @@ ggsave("outputs/figures/box_edss_by_medicine.png", plot = p_medicine,
        width = 8, height = 5, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/box_edss_by_medicine.png")
 
+
+# E-bis)---------------BINARY_SUM VS EDSS CLASSES-------------------------------
+
+# Funzione helper
+format_p <- function(p) {
+  if (is.na(p)) return(NA_character_)
+  if (p < 0.001) return("<0.001")
+  format(round(p, 3), nsmall = 3)
+}
+
+# Tabella risultati
+binarysum_edssclass_tests <- tibble(
+  outcome = character(),
+  predictor = character(),
+  test = character(),
+  groups = character(),
+  n_total = integer(),
+  statistic = numeric(),
+  p_value = numeric(),
+  p_value_label = character(),
+  note = character()
+)
+
+# --- binary_sum ~ edss_bin (Wilcoxon) ---
+
+if ("edss_bin" %in% names(df)) {
+  
+  df_edss_bin <- df %>%
+    filter(! is.na(edss_bin) & ! is.na(binary_sum))
+  
+  # Conta per gruppo
+  counts_bin <- df_edss_bin %>% count(edss_bin)
+  
+  # Verifica n >= 5 per entrambi i gruppi
+  if (all(counts_bin$n >= 5) && nrow(counts_bin) == 2) {
+    
+    test_bin <- wilcox.test(binary_sum ~ edss_bin, data = df_edss_bin, exact = FALSE)
+    
+    binarysum_edssclass_tests <- bind_rows(binarysum_edssclass_tests, tibble(
+      outcome = "binary_sum",
+      predictor = "edss_bin",
+      test = "Wilcoxon",
+      groups = paste(levels(df_edss_bin$edss_bin), collapse = " vs "),
+      n_total = nrow(df_edss_bin),
+      statistic = round(test_bin$statistic, 2),
+      p_value = test_bin$p.value,
+      p_value_label = format_p(test_bin$p.value),
+      note = "tested"
+    ))
+    
+    cat("Test eseguito (n =", nrow(df_edss_bin), ")\n")
+    
+  } else {
+    binarysum_edssclass_tests <- bind_rows(binarysum_edssclass_tests, tibble(
+      outcome = "binary_sum",
+      predictor = "edss_bin",
+      test = "Wilcoxon",
+      groups = paste(levels(df$edss_bin), collapse = " vs "),
+      n_total = nrow(df_edss_bin),
+      statistic = NA_real_,
+      p_value = NA_real_,
+      p_value_label = "NA",
+      note = "skipped_low_counts"
+    ))
+    cat("Skipped:  n < 5 in almeno un gruppo\n")
+  }
+  
+} else {
+  cat("Colonna edss_bin non trovata\n")
+}
+
+# --- binary_sum ~ edss_3class (Kruskal-Wallis) ---
+
+if ("edss_3class" %in% names(df)) {
+  
+  df_edss_3class <- df %>%
+    filter(!is.na(edss_3class) & !is.na(binary_sum))
+  
+  # Conta per gruppo
+  counts_3class <- df_edss_3class %>% count(edss_3class)
+  
+  # Verifica almeno 2 classi con n >= 5
+  classes_with_enough <- sum(counts_3class$n >= 5)
+  
+  if (classes_with_enough >= 2) {
+    
+    test_3class <- kruskal.test(binary_sum ~ edss_3class, data = df_edss_3class)
+    
+    binarysum_edssclass_tests <- bind_rows(binarysum_edssclass_tests, tibble(
+      outcome = "binary_sum",
+      predictor = "edss_3class",
+      test = "Kruskal-Wallis",
+      groups = paste(levels(df_edss_3class$edss_3class), collapse = ", "),
+      n_total = nrow(df_edss_3class),
+      statistic = round(test_3class$statistic, 2),
+      p_value = test_3class$p.value,
+      p_value_label = format_p(test_3class$p.value),
+      note = "tested"
+    ))
+    
+    cat("Test eseguito (n =", nrow(df_edss_3class), ")\n")
+    
+  } else {
+    binarysum_edssclass_tests <- bind_rows(binarysum_edssclass_tests, tibble(
+      outcome = "binary_sum",
+      predictor = "edss_3class",
+      test = "Kruskal-Wallis",
+      groups = paste(levels(df$edss_3class), collapse = ", "),
+      n_total = nrow(df_edss_3class),
+      statistic = NA_real_,
+      p_value = NA_real_,
+      p_value_label = "NA",
+      note = "skipped_low_counts"
+    ))
+    cat("Skipped: meno di 2 classi con n >= 5\n")
+  }
+  
+} else {
+  cat("Colonna edss_3class non trovata\n")
+}
+
+# Salva tabella test
+write_csv(binarysum_edssclass_tests, "outputs/tables/binary_sum_vs_edss_classes_tests.csv")
+saved_csv <- c(saved_csv, "outputs/tables/binary_sum_vs_edss_classes_tests.csv")
+
+cat("\n otputs/tables/binary_sum_vs_edss_classes_tests.csv\n")
+print(binarysum_edssclass_tests)
+
+# --- Grafici boxplot ---
+
+# Boxplot binary_sum ~ edss_bin
+if ("edss_bin" %in% names(df)) {
+  
+  p_bs_edss_bin <- df %>%
+    filter(!is.na(edss_bin) & !is.na(binary_sum)) %>%
+    ggplot(aes(x = edss_bin, y = binary_sum)) +
+    geom_boxplot(
+      fill = project_colors[1],
+      alpha = 0.5,
+      outlier.shape = NA
+    ) +
+    geom_jitter(
+      width = 0.15,
+      height = 0.1,
+      alpha = 0.6,
+      color = project_colors[6],
+      size = 2
+    ) +
+    labs(
+      title = "Binary Sum per EDSS (classificazione binaria)",
+      subtitle = "class0 (<=2.0) vs class1 (>2.0)",
+      x = "EDSS Classe Binaria",
+      y = "Binary Sum"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold"))
+  
+  ggsave("outputs/figures/box_binary_sum_by_edss_bin.png", plot = p_bs_edss_bin,
+         width = 8, height = 5, dpi = 300)
+  saved_png <- c(saved_png, "outputs/figures/box_binary_sum_by_edss_bin.png")
+  cat("outputs/figures/box_binary_sum_by_edss_bin.png\n")
+}
+
+# Boxplot binary_sum ~ edss_3class
+if ("edss_3class" %in% names(df)) {
+  
+  p_bs_edss_3class <- df %>%
+    filter(!is.na(edss_3class) & !is.na(binary_sum)) %>%
+    ggplot(aes(x = edss_3class, y = binary_sum)) +
+    geom_boxplot(
+      fill = project_colors[1],
+      alpha = 0.5,
+      outlier.shape = NA
+    ) +
+    geom_jitter(
+      width = 0.15,
+      height = 0.1,
+      alpha = 0.6,
+      color = project_colors[6],
+      size = 2
+    ) +
+    labs(
+      title = "Binary Sum by EDSS (classificazione 3-classi)",
+      subtitle = "normal (0-2. 0), mild (2.5-4.0), severe (>4.0)",
+      x = "EDSS 3-Classi",
+      y = "Binary Sum"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold"),
+      axis.text.x = element_text(angle = 15, hjust = 1)
+    )
+  
+  ggsave("outputs/figures/box_binary_sum_by_edss_3class.png", plot = p_bs_edss_3class,
+         width = 8, height = 5, dpi = 300)
+  saved_png <- c(saved_png, "outputs/figures/box_binary_sum_by_edss_3class.png")
+  cat("outputs/figures/box_binary_sum_by_edss_3class.png\n")
+}
 
 # F)-------------------EDSS VS VARIABILI BINARIE (WILCOXON BATCH)---------------
 
@@ -737,7 +935,7 @@ print(head(skewness_df))
 cat("\nhead(spearman_corr):\n")
 print(head(spearman_corr))
 
-cat("\nbivariate_tests_edss_groups:\n")
+cat("\nbivariate_tests_edss_vs_categoricals:\n")
 print(bivariate_tests)
 
 cat("\nhead(wilcox_results):\n")
@@ -752,3 +950,6 @@ cat("\nFile PNG salvati (", length(saved_png), "):\n")
 for (f in saved_png) {
   cat(f, "\n")
 }
+
+cat("\nbinary_sum_vs_edss_classes_tests:\n")
+print(binarysum_edssclass_tests)
