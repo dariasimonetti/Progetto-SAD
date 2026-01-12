@@ -1,0 +1,4 @@
+outcome,test,statistic,p_value,p_value_label,note
+edss,Kruskal-Wallis,18.088,4.22e-4,<0.001,df=3
+edss_bin,Fisher (simulated),NA,0.0073,0.007,expected<5
+edss_3class,Fisher (simulated),NA,0.0014,0.001,expected<5

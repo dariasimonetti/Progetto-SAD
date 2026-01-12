@@ -1,0 +1,4 @@
+cluster,edss_3class,n,perc
+1,mild (2.5-4.0),21,100
+2,normal (0-2.0),33,100
+3,severe (>4.0),6,100

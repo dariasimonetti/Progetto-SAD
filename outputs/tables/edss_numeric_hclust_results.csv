@@ -1,0 +1,7 @@
+distance_type,method,k,avg_silhouette,n
+manhattan,average,2,0.6695,60
+manhattan,average,3,0.6426,60
+manhattan,average,4,0.5325,60
+euclidean,average,2,0.6695,60
+euclidean,average,3,0.6426,60
+euclidean,average,4,0.5325,60
