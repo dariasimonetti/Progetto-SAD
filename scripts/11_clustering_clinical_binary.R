@@ -280,7 +280,7 @@ for (dist_name in names(distances)) {
   cat("\n   Distanza:", dist_name, "\n")
   
   # --- HCLUST con average linkage ---
-  cat("      hclust (average)...")
+  cat("hclust (average)...")
   hc_avg <- hclust(dist_obj, method = "average")
   clustering_objects[[paste0(dist_name, "_hclust_average")]] <- hc_avg
   
@@ -298,7 +298,7 @@ for (dist_name in names(distances)) {
   }
   
   # --- HCLUST con complete linkage ---
-  cat("      hclust (complete)...")
+  cat("hclust (complete)...")
   hc_comp <- hclust(dist_obj, method = "complete")
   clustering_objects[[paste0(dist_name, "_hclust_complete")]] <- hc_comp
   
@@ -316,7 +316,7 @@ for (dist_name in names(distances)) {
   }
   
   # --- PAM (k-medoids) ---
-  cat("      PAM...")
+  cat("PAM...")
   
   for (k in k_range) {
     pam_result <- pam(dist_obj, k = k, diss = TRUE)
@@ -441,7 +441,7 @@ silhouette_grid_out <- silhouette_grid %>%
 write_csv(silhouette_grid_out, "outputs/tables/silhouette_grid_11.csv")
 saved_csv <- c(saved_csv, "outputs/tables/silhouette_grid_11.csv")
 
-# Tieni solo configurazioni "valide" (cluster non troppo piccoli)
+# Tieni solo configurazioni con cluster non troppo piccoli
 valid_grid <- silhouette_grid %>%
   filter(min_cluster_n >= min_cluster_size)
 
@@ -498,6 +498,63 @@ df <- df %>%
   left_join(clusters_best_df %>% select(row_id, cluster), by = "row_id")
 
 cluster_sizes <- table(df$cluster)
+
+# --- EXTRA: JACCARD (richiesta prof) ---
+
+# (1) Confronto "fair": stessa struttura (PAM, k=4), cambia solo distanza -> Jaccard
+pam_jaccard_k4 <- pam(dist_jaccard, k = 4, diss = TRUE)
+clusters_jaccard_k4 <- as.integer(pam_jaccard_k4$clustering)
+
+df_jaccard_k4 <- df %>%
+  select(-cluster) %>%
+  left_join(tibble(row_id = df$row_id, cluster = clusters_jaccard_k4), by = "row_id")
+
+cluster_sizes_jaccard_k4 <- table(df_jaccard_k4$cluster)
+cat("\n[Jaccard+PAM k=4] size cluster:", paste(names(cluster_sizes_jaccard_k4), cluster_sizes_jaccard_k4, sep = "=", collapse = " | "), "\n")
+
+# (2) Migliore configurazione solo tra Jaccard usando gli stessi criteri
+valid_grid_jaccard <- silhouette_grid %>%
+  filter(distance == "jaccard") %>%
+  filter(min_cluster_n >= min_cluster_size)
+
+if (nrow(valid_grid_jaccard) == 0) {
+  stop("Con Jaccard non ci sono configurazioni valide (min_cluster_size).")
+}
+
+max_sil_j <- max(valid_grid_jaccard$avg_silhouette, na.rm = TRUE)
+
+candidates_j <- valid_grid_jaccard %>%
+  filter(avg_silhouette >= max_sil_j - delta)
+
+best_config_jaccard <- candidates_j %>%
+  arrange(desc(avg_silhouette), k) %>%
+  slice(1)
+
+cat("\nBEST CONFIG SOLO JACCARD (con vincolo min_cluster_size):\n")
+cat("   Distanza:", best_config_jaccard$distance, "\n")
+cat("   Algoritmo:", best_config_jaccard$algorithm, "\n")
+cat("   Linkage:", ifelse(is.na(best_config_jaccard$linkage), "N/A", best_config_jaccard$linkage), "\n")
+cat("   k:", best_config_jaccard$k, "\n")
+cat("   Silhouette:", round(best_config_jaccard$avg_silhouette, 4), "\n")
+cat("   Min cluster n:", best_config_jaccard$min_cluster_n, "\n")
+
+# estrai cluster per best Jaccard
+if (best_config_jaccard$algorithm == "hclust") {
+  obj_key_j <- paste0(best_config_jaccard$distance, "_hclust_", best_config_jaccard$linkage)
+  hc_j_best <- clustering_objects[[obj_key_j]]
+  clusters_j_best <- cutree(hc_j_best, k = best_config_jaccard$k)
+} else {
+  pam_j_best <- pam(dist_jaccard, k = best_config_jaccard$k, diss = TRUE)
+  clusters_j_best <- pam_j_best$clustering
+}
+
+df_jaccard_best <- df %>%
+  select(-cluster) %>%
+  left_join(tibble(row_id = df$row_id, cluster = as.integer(clusters_j_best)), by = "row_id")
+
+cluster_sizes_jaccard_best <- table(df_jaccard_best$cluster)
+cat("\n[Jaccard BEST] size cluster:", paste(names(cluster_sizes_jaccard_best), cluster_sizes_jaccard_best, sep = "=", collapse = " | "), "\n")
+
 
 # 7. GRAFICI
 
@@ -779,6 +836,84 @@ if ("binary_sum" %in% names(df)) {
          width = 8, height = 6, dpi = 300)
   saved_png <- c(saved_png, "outputs/figures/binarysum_by_cluster_11.png")
 }
+
+# --- EXTRA: AJCCARD ---
+
+# Helper per fare i due plot (bin e 3-class) dato un df con colonna cluster
+plot_edss_composition <- function(df_in, tag) {
+  
+  # edss_3class
+  if ("edss_3class" %in% names(df_in)) {
+    comp_3 <- df_in %>%
+      filter(!is.na(edss_3class), !is.na(cluster)) %>%
+      mutate(
+        cluster = factor(cluster),
+        edss_3class = factor(edss_3class, levels = c("normal (0-2.0)", "mild (2.5-4.0)", "severe (>4.0)"))
+      ) %>%
+      count(cluster, edss_3class) %>%
+      group_by(cluster) %>%
+      mutate(perc = n / sum(n) * 100) %>%
+      ungroup()
+    
+    p3 <- ggplot(comp_3, aes(cluster, perc, fill = edss_3class)) +
+      geom_col(position = "fill", alpha = 0.85) +
+      scale_y_continuous(labels = percent_format(scale = 1)) +
+      scale_fill_manual(
+        values = c("normal (0-2.0)" = project_colors[3],
+                   "mild (2.5-4.0)" = project_colors[2],
+                   "severe (>4.0)" = project_colors[6]),
+        name = "EDSS 3-class"
+      ) +
+      labs(
+        title = paste0("Composizione EDSS 3-class per cluster (", tag, ")"),
+        subtitle = "Percentuali all'interno di ciascun cluster (100% stacked)",
+        x = "Cluster",
+        y = "Percentuale nel cluster"
+      ) +
+      theme_minimal() +
+      theme(plot.title = element_text(face = "bold"))
+    
+    out_png <- paste0("outputs/figures/edss3class_composition_by_cluster_", tag, "_11.png")
+    ggsave(out_png, plot = p3, width = 9, height = 5.5, dpi = 300)
+    saved_png <- c(saved_png, out_png)
+  }
+  
+  # edss_bin
+  if ("edss_bin" %in% names(df_in)) {
+    comp_bin <- df_in %>%
+      filter(!is.na(edss_bin), !is.na(cluster)) %>%
+      mutate(cluster = factor(cluster)) %>%
+      count(cluster, edss_bin) %>%
+      group_by(cluster) %>%
+      mutate(perc = n / sum(n) * 100) %>%
+      ungroup()
+    
+    pbin <- ggplot(comp_bin, aes(cluster, perc, fill = edss_bin)) +
+      geom_col(position = "fill", alpha = 0.85) +
+      scale_y_continuous(labels = percent_format(scale = 1)) +
+      scale_fill_manual(
+        values = c("class0 (<=2.0)" = project_colors[3],
+                   "class1 (>2.0)" = project_colors[4]),
+        name = "EDSS bin"
+      ) +
+      labs(
+        title = paste0("Composizione EDSS bin per cluster (", tag, ")"),
+        subtitle = "Percentuali all'interno di ciascun cluster (100% stacked)",
+        x = "Cluster",
+        y = "Percentuale nel cluster"
+      ) +
+      theme_minimal() +
+      theme(plot.title = element_text(face = "bold"))
+    
+    out_png <- paste0("outputs/figures/edssbin_composition_by_cluster_", tag, "_11.png")
+    ggsave(out_png, plot = pbin, width = 8.5, height = 5.5, dpi = 300)
+    saved_png <- c(saved_png, out_png)
+  }
+}
+
+# Genera i grafici richiesti dal prof
+plot_edss_composition(df_jaccard_k4, tag = "jaccard_pam_k4")
+plot_edss_composition(df_jaccard_best, tag = "jaccard_best")
 
 # 8. VALIDAZIONE ESTERNA:  TEST STATISTICI
 validation_tests <- tibble(
