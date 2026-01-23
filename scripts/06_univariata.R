@@ -4,6 +4,8 @@
 # Autore:  Daria Simonetti
 # ============================================================================
 
+if (!require(viridis, quietly = TRUE)) install.packages("viridis")
+library(viridis)
 source("scripts/01_setup.R")
 
 df <- readRDS("outputs/data/data_complete.rds")
@@ -241,7 +243,7 @@ for (var in c("age", "age_of_onset", "disease_duration")) {
 
 p_edss <- ggplot(df, aes(x = "", y = edss)) +
   geom_boxplot(fill = project_colors[7], alpha = 0.5, width = 0.4, outlier.shape = NA) +
-  geom_jitter(color = project_colors[6], alpha = 0.6, width = 0.1, size = 2) +
+  geom_jitter(width = 0.1, height = 0, color = project_colors[6], alpha = 0.6, size = 2) +
   labs(
     title = "Distribuzione EDSS",
     subtitle = "Boxplot con punti individuali",
@@ -287,42 +289,52 @@ saved_png <- c(saved_png, "outputs/figures/binary_sum_counts.png")
 
 # B2) Categoriche: barplot in percentuale
 
-# Funzione per barplot percentuale
-plot_bar_perc <- function(data, var_name, order_by_freq = TRUE, 
-                          rotate_labels = FALSE, show_n = TRUE) {
+plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
+                          rotate_labels = FALSE, show_n = TRUE,
+                          palette = NULL) {
   
   title_clean <- str_replace_all(var_name, "_", " ") %>% str_to_title()
   
-  # Prepara dati
   plot_data <- data %>%
     filter(!is.na(.data[[var_name]])) %>%
     count(.data[[var_name]], name = "n") %>%
-    mutate(perc = n / sum(n) * 100)
+    mutate(
+      perc = n / sum(n) * 100,
+      level = as.factor(.data[[var_name]])
+    )
   
-  # Ordina per frequenza
   if (order_by_freq) {
     plot_data <- plot_data %>%
-      mutate(!! var_name := fct_reorder(.data[[var_name]], n, .desc = TRUE))
+      mutate(level = fct_reorder(level, n, .desc = TRUE))
   }
   
-  # Crea plot
-  p <- ggplot(plot_data, aes(x = .data[[var_name]], y = perc)) +
-    geom_col(fill = project_colors[8], alpha = 0.8) +
+  p <- ggplot(plot_data, aes(x = level, y = perc, fill = level)) +
+    geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
     labs(
       title = paste("Distribuzione:", title_clean),
       x = title_clean,
-      y = "Percentuale (%)"
+      y = "Percentuale (%)",
+      fill = title_clean
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(face = "bold"))
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.position = "none"
+    )
   
-  # Aggiungi etichette con n
-  if (show_n) {
-    p <- p + geom_text(aes(label = paste0(round(perc, 1), "%\n(n=", n, ")")), 
-                       vjust = -0.2, size = 3)
+  if (is.null(palette)) {
+    p <- p + scale_fill_manual(values = rep(project_colors, length.out = nlevels(plot_data$level)))
+  } else {
+    p <- p + scale_fill_manual(values = palette)
   }
   
-  # Ruota etichette asse x
+  if (show_n) {
+    p <- p + geom_text(
+      aes(label = paste0(round(perc, 1), "%\n(n=", n, ")")),
+      vjust = -0.25, size = 3
+    )
+  }
+  
   if (rotate_labels) {
     p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
   }
@@ -331,7 +343,12 @@ plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
 }
 
 # Gender
-p_gender <- plot_bar_perc(df, "gender", order_by_freq = TRUE)
+gender_palette <- c(
+  "F" = project_colors[4],
+  "M" = project_colors[1]
+)
+
+p_gender <- plot_bar_perc(df, "gender", order_by_freq = TRUE, palette = gender_palette)
 ggsave("outputs/figures/bar_gender_perc.png", plot = p_gender, 
        width = 6, height = 6, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_gender_perc.png")
@@ -345,7 +362,7 @@ saved_png <- c(saved_png, "outputs/figures/bar_medicine_perc.png")
 # MRI EDSS diff
 p_mri <- plot_bar_perc(df, "mri_edss_diff", order_by_freq = FALSE)
 ggsave("outputs/figures/bar_mri_edss_diff_perc.png", plot = p_mri, 
-       width = 6, height = 6, dpi = 300)
+       width = 6, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_mri_edss_diff_perc.png")
 
 # Comorbidity
@@ -380,8 +397,10 @@ p_symptom <- df %>%
     perc = n / sum(n) * 100,
     symptom = fct_reorder(symptom, n, .desc = TRUE)
   ) %>%
-  ggplot(aes(x = symptom, y = perc)) +
-  geom_col(fill = project_colors[8], alpha = 0.8) +
+  ggplot(aes(x = symptom, y = perc, fill = symptom)) +
+  geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
+  scale_fill_viridis_d(option = "D", end = 0.95) +
+  guides(fill = "none") +
   geom_text(aes(label = n), vjust = -0.3, size = 2.5) +
   labs(
     title = "Distribuzione:  Presenting Symptom",
@@ -405,8 +424,10 @@ saved_png <- c(saved_png, "outputs/figures/bar_symptom_perc.png")
 # Cliniche
 p_freq_clinical <- freq_clinical %>%
   mutate(feature = fct_reorder(feature, perc_1)) %>%
-  ggplot(aes(x = feature, y = perc_1)) +
-  geom_col(fill = project_colors[3], alpha = 0.8) +
+  ggplot(aes(x = feature, y = perc_1, fill = feature)) +
+  geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
+  scale_fill_viridis_d(option = "D", end = 0.95, direction = -1) +
+  guides(fill = "none") +
   geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
   coord_flip() +
   scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
@@ -429,8 +450,10 @@ if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
   
   p_freq_presenting <- freq_presenting %>%
     mutate(feature = fct_reorder(feature, perc_1)) %>%
-    ggplot(aes(x = feature, y = perc_1)) +
-    geom_col(fill = project_colors[2], alpha = 0.8) +
+    ggplot(aes(x = feature, y = perc_1, fill = feature)) +
+    geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
+    scale_fill_viridis_d(option = "D", end = 0.95, direction = -1) +
+    guides(fill = "none") +
     geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
     coord_flip() +
     scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
