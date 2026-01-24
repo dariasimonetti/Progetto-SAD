@@ -108,6 +108,7 @@ calc_freq <- function(data, var_name, keep_order = FALSE) {
     rename(level = 1) %>%
     mutate(
       level = as.character(level),
+      f = round(n/sum(n), 2),
       perc = round(n / sum(n) * 100, 2)
     )
   
@@ -151,6 +152,8 @@ freq_clinical <- df %>%
     .groups = "drop"
   ) %>%
   mutate(
+    f_1 = round(n_1/(n_1+n_0), 2),
+    f_0 = round(n_0/(n_1+n_0), 2),
     perc_1 = round(n_1 / (n_1 + n_0) * 100, 2) #freq rel %
   ) %>%
   arrange(desc(perc_1))
@@ -175,6 +178,8 @@ if (length(presenting_binary) > 0) {
       .groups = "drop"
     ) %>%
     mutate(
+      f_1 = round(n_1/(n_1+n_0), 2),
+      f_0 = round(n_0/(n_1+n_0), 2),
       perc_1 = round(n_1 / (n_1 + n_0) * 100, 2)
     ) %>%
     arrange(desc(perc_1))
@@ -190,7 +195,7 @@ if (length(presenting_binary) > 0) {
 
 # B)-------------------------GRAFICI PNG----------------------------------------
 
-# B1) Numeriche con patchwork
+# B1) Numeriche
 
 # Funzione per creare grafico combinato hist + boxplot
 plot_numeric_dist <- function(data, var_name, bins = 15) {
@@ -202,10 +207,10 @@ plot_numeric_dist <- function(data, var_name, bins = 15) {
   p_hist <- ggplot(data, aes(x = .data[[var_name]])) +
     geom_histogram(aes(y = after_stat(density)), 
                    bins = bins, 
-                   fill = project_colors[5], 
+                   fill = "#1F9E89FF", 
                    color = "white",
                    alpha = 0.7) +
-    geom_density(color = project_colors[2], linewidth = 1) +
+    geom_density(color = "#482878FF", linewidth = 1) +
     labs(
       title = paste("Distribuzione:", title_clean),
       x = title_clean,
@@ -216,14 +221,19 @@ plot_numeric_dist <- function(data, var_name, bins = 15) {
   
   # Boxplot
   p_box <- ggplot(data, aes(y = .data[[var_name]])) +
-    geom_boxplot(fill = project_colors[3], alpha = 0.7, width = 0.3) +
+    geom_boxplot(fill = "#FDE725FF", alpha = 0.7, width = 0.3, outlier.shape = 21 ,outlier.size = 2.5,
+                 outlier.color = "#482878FF",
+                 outlier.fill = "#1F9E89FF",
+                 outlier.alpha = 0.8) +
     labs(y = title_clean, x = "") +
-    theme_minimal() +
-    coord_flip()
+    theme_classic()
+  
+  p_box <- p_box +
+    theme(plot.margin = margin(5, 5, 5, 30))
   
   # Combina con patchwork
-  p_combined <- p_hist / p_box + 
-    plot_layout(heights = c(3, 1))
+  p_combined <- p_hist | p_box + 
+    plot_layout(widths = c(3,  1))
   
   return(p_combined)
 }
@@ -234,7 +244,7 @@ for (var in c("age", "age_of_onset", "disease_duration")) {
   p <- plot_numeric_dist(df, var, bins = 15)
   
   output_path <- paste0("outputs/figures/dist_", var, ".png")
-  ggsave(output_path, plot = p, width = 8, height = 8, dpi = 300)
+  ggsave(output_path, plot = p, width = 10, height = 7, dpi = 300)
   saved_png <- c(saved_png, output_path)
   
 }
@@ -242,8 +252,8 @@ for (var in c("age", "age_of_onset", "disease_duration")) {
 # EDSS:  boxplot + jitter
 
 p_edss <- ggplot(df, aes(x = "", y = edss)) +
-  geom_boxplot(fill = project_colors[7], alpha = 0.5, width = 0.4, outlier.shape = NA) +
-  geom_jitter(width = 0.1, height = 0, color = project_colors[6], alpha = 0.6, size = 2) +
+  geom_boxplot(fill = "#1F9E89FF", alpha = 0.5, width = 0.4, outlier.shape = NA) +
+  geom_jitter(width = 0.2, height = 0, color = "#482878FF", alpha = 0.6, size = 2) +
   labs(
     title = "Distribuzione EDSS",
     subtitle = "Boxplot con punti individuali",
@@ -266,15 +276,19 @@ palette_19 <- palette(19)
 p_binary_sum <- df %>%
   filter(!is.na(binary_sum)) %>%
   count(binary_sum) %>%
+  mutate(
+    perc = n / sum(n),                    # calcola la percentuale
+    label = paste0(n, " (", round(perc, 2), ")") # crea label: "conteggio (perc%)"
+  ) %>%
   ggplot(aes(x = factor(binary_sum), y = n, fill = factor(binary_sum))) +
   geom_col(alpha = 0.8) +
-  scale_fill_manual(values = palette_19) +
-  geom_text(aes(label = n), vjust = -0.5, size = 3.5) +
+  scale_fill_viridis_d(option = "viridis", end = 0.9) +
+  geom_text(aes(label = label), vjust = -0.5, size = 3.5) +
   labs(
     title = "Distribuzione Binary Sum",
     subtitle = "Somma indicatori clinici binari",
     x = "Binary Sum",
-    y = "Conteggio"
+    y = "Frequenza"
   ) +
   theme_minimal() +
   theme(
@@ -299,7 +313,7 @@ plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
     filter(!is.na(.data[[var_name]])) %>%
     count(.data[[var_name]], name = "n") %>%
     mutate(
-      perc = n / sum(n) * 100,
+      perc = n / sum(n),
       level = as.factor(.data[[var_name]])
     )
   
@@ -313,7 +327,7 @@ plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
     labs(
       title = paste("Distribuzione:", title_clean),
       x = title_clean,
-      y = "Percentuale (%)",
+      y = "Frequenza Relativa",
       fill = title_clean
     ) +
     theme_minimal() +
@@ -323,14 +337,14 @@ plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
     )
   
   if (is.null(palette)) {
-    p <- p + scale_fill_manual(values = rep(project_colors, length.out = nlevels(plot_data$level)))
+    p <- p + scale_fill_viridis_d(option = "viridis", end = 0.9)
   } else {
     p <- p + scale_fill_manual(values = palette)
   }
   
   if (show_n) {
     p <- p + geom_text(
-      aes(label = paste0(round(perc, 1), "%\n(n=", n, ")")),
+      aes(label = paste0(round(perc*100, 1), "%\n(n=", n, ")")),
       vjust = -0.25, size = 3
     )
   }
@@ -344,78 +358,44 @@ plot_bar_perc <- function(data, var_name, order_by_freq = TRUE,
 
 # Gender
 gender_palette <- c(
-  "F" = project_colors[4],
-  "M" = project_colors[1]
+  "F" = "#482878FF",
+  "M" = "#1F9E89FF"
 )
 
 p_gender <- plot_bar_perc(df, "gender", order_by_freq = TRUE, palette = gender_palette)
 ggsave("outputs/figures/bar_gender_perc.png", plot = p_gender, 
-       width = 6, height = 6, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_gender_perc.png")
 
 # Medicine
 p_medicine <- plot_bar_perc(df, "medicine", order_by_freq = TRUE)
 ggsave("outputs/figures/bar_medicine_perc.png", plot = p_medicine, 
-       width = 8, height = 6, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_medicine_perc.png")
 
 # MRI EDSS diff
 p_mri <- plot_bar_perc(df, "mri_edss_diff", order_by_freq = FALSE)
 ggsave("outputs/figures/bar_mri_edss_diff_perc.png", plot = p_mri, 
-       width = 6, height = 8, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_mri_edss_diff_perc.png")
 
 # Comorbidity
 p_comorbidity <- plot_bar_perc(df, "comorbidity", order_by_freq = FALSE)
 ggsave("outputs/figures/bar_comorbidity_perc.png", plot = p_comorbidity, 
-       width = 6, height = 6, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_comorbidity_perc.png")
 
 # EDSS bin (mantieni ordine livelli)
 p_edss_bin <- plot_bar_perc(df, "edss_bin", order_by_freq = FALSE)
 ggsave("outputs/figures/bar_edss_bin_perc.png", plot = p_edss_bin, 
-       width = 8, height = 6, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_edss_bin_perc.png")
 
 # EDSS 3class (mantieni ordine livelli)
 p_edss_3class <- plot_bar_perc(df, "edss_3class", order_by_freq = FALSE)
 ggsave("outputs/figures/bar_edss_3class_perc.png", plot = p_edss_3class, 
-       width = 8, height = 6, dpi = 300)
+       width = 9, height = 8, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/bar_edss_3class_perc.png")
-
-# Symptom (molti livelli, ruota etichette)
-p_symptom <- plot_bar_perc(df, "symptom", order_by_freq = TRUE, 
-                           rotate_labels = TRUE, show_n = FALSE) +
-  geom_text(aes(label = after_stat(y), y = after_stat(y)), 
-            stat = "identity", vjust = -0.3, size = 2.5)
-
-# Ricostruisci con etichette semplici
-p_symptom <- df %>%
-  filter(!is.na(symptom)) %>%
-  count(symptom, name = "n") %>%
-  mutate(
-    perc = n / sum(n) * 100,
-    symptom = fct_reorder(symptom, n, .desc = TRUE)
-  ) %>%
-  ggplot(aes(x = symptom, y = perc, fill = symptom)) +
-  geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
-  scale_fill_viridis_d(option = "D", end = 0.95) +
-  guides(fill = "none") +
-  geom_text(aes(label = n), vjust = -0.3, size = 2.5) +
-  labs(
-    title = "Distribuzione:  Presenting Symptom",
-    x = "Symptom",
-    y = "Percentuale (%)"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 55, hjust = 1, size = 7)
-  )
-
-ggsave("outputs/figures/bar_symptom_perc.png", plot = p_symptom, 
-       width = 12, height = 7, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/bar_symptom_perc.png")
 
 
 # B3) Frequenze binarie:  barplot orizzontale
@@ -428,12 +408,12 @@ p_freq_clinical <- freq_clinical %>%
   geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
   scale_fill_viridis_d(option = "D", end = 0.95, direction = -1) +
   guides(fill = "none") +
-  geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
+  geom_text(aes(label = paste0(perc_1, "% (n=", n_1, ")")), hjust = -0.1, size = 3) +
   coord_flip() +
   scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
   labs(
     title = "Frequenza Indicatori Clinici Binari",
-    subtitle = "Percentuale pazienti con valore = 1",
+    subtitle = "Percentuale pazienti con valore = 1 per ogni indicatore",
     x = "Indicatore",
     y = "Frequenza (%)"
   ) +
@@ -454,7 +434,7 @@ if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
     geom_col(alpha = 0.85, color = "white", linewidth = 0.3) +
     scale_fill_viridis_d(option = "D", end = 0.95, direction = -1) +
     guides(fill = "none") +
-    geom_text(aes(label = paste0(perc_1, "%")), hjust = -0.1, size = 3) +
+    geom_text(aes(label = paste0(perc_1, "% (n=", n_1, ")")), hjust = -0.1, size = 3) +
     coord_flip() +
     scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.15))) +
     labs(
