@@ -261,16 +261,16 @@ plot_numeric_full <- function(data, var_name, bins = 15) {
     theme_minimal() +
     theme(plot.title = element_text(face = "bold", size = 12))
   
-  # Combina con patchwork
-  # colonna destra più stretta + boxplot leggermente più largo
+  # colonna destra più stretta
   p_combined <- p_hist | (p_box / p_density) + 
-    plot_layout(widths = c(4, 0.7))  
+    plot_layout(widths = c(4, 1), heights = c(0.7, 1.3))  
+  
 
   
   return(p_combined)
 }
 
-# Esempio: crea i grafici per le variabili numeriche
+# Crea i grafici per le variabili numeriche
 for (var in c("age", "age_of_onset", "disease_duration")) {
   
   p <- plot_numeric_full(df, var, bins = 15)
