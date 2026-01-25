@@ -195,33 +195,54 @@ if (length(presenting_binary) > 0) {
 
 # B)-------------------------GRAFICI PNG----------------------------------------
 
-# B1) Numeriche
+# B1) Numeriche (istogramma + boxplot + KDP)
 
-# Funzione per creare grafico combinato hist + boxplot
-plot_numeric_dist <- function(data, var_name, bins = 15) {
+plot_numeric_full <- function(data, var_name, bins = 15) {
   
   # Titolo formattato
   title_clean <- str_replace_all(var_name, "_", " ") %>% str_to_title()
+  # Larghezza fissa dei bin
+  bin_width <- 5
   
-  # Istogramma + densità
-  p_hist <- ggplot(data, aes(x = .data[[var_name]])) +
-    geom_histogram(aes(y = after_stat(density)), 
-                   bins = bins, 
-                   fill = "#1F9E89FF", 
-                   color = "white",
-                   alpha = 0.7) +
-    geom_density(color = "#482878FF", linewidth = 1) +
+  # Creiamo i break dei bin
+  breaks <- seq(floor(min(data[[var_name]], na.rm = TRUE) / bin_width) * bin_width,
+                ceiling(max(data[[var_name]], na.rm = TRUE) / bin_width) * bin_width,
+                by = bin_width)
+  
+  # Creiamo un nuovo fattore con gli intervalli
+  data$bin_interval <- cut(
+    data[[var_name]],
+    breaks = breaks,
+    right = FALSE,   # include l'estremo sinistro e esclude il destro
+    include.lowest = TRUE
+  )
+  
+  # Etichette degli intervalli
+  levels(data$bin_interval) <- paste(head(breaks, -1), tail(breaks, -1), sep = "-")
+  
+  # Istogramma con asse x categoriale
+  p_hist <- ggplot(data, aes(x = bin_interval)) +
+    geom_bar(aes(y = after_stat(count)),
+             fill = "#1F9E89FF", color = "white", alpha = 0.7) +
+    geom_text(aes(y = after_stat(count), label = after_stat(count)),
+              stat = "count",
+              vjust = -0.5,
+              color = "#482878FF",
+              size = 3) +
     labs(
       title = paste("Distribuzione:", title_clean),
       x = title_clean,
-      y = "Densità"
+      y = "Frequenza"
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(face = "bold", size = 12))
+    theme(
+      plot.title = element_text(face = "bold", size = 12),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
   
   # Boxplot
   p_box <- ggplot(data, aes(y = .data[[var_name]])) +
-    geom_boxplot(fill = "#FDE725FF", alpha = 0.7, width = 0.3, outlier.shape = 21 ,outlier.size = 2.5,
+    geom_boxplot(fill = "#FDE725FF", alpha = 0.7, width = 0.2, outlier.shape = 21 ,outlier.size = 2.5,
                  outlier.color = "#482878FF",
                  outlier.fill = "#1F9E89FF",
                  outlier.alpha = 0.8) +
@@ -231,19 +252,30 @@ plot_numeric_dist <- function(data, var_name, bins = 15) {
   p_box <- p_box +
     theme(plot.margin = margin(5, 5, 5, 30))
   
+  # Kernel Density Plot
+  p_density <- ggplot(data, aes(x = .data[[var_name]])) +
+    geom_density(color = "#482878FF", fill = "#1F9E89FF", alpha = 0.3, linewidth = 1) +
+    labs(title = paste("Densità di kernel:", title_clean),
+         x = title_clean,
+         y = "Densità") +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold", size = 12))
+  
   # Combina con patchwork
-  p_combined <- p_hist | p_box + 
-    plot_layout(widths = c(3,  1))
+  # colonna destra più stretta + boxplot leggermente più largo
+  p_combined <- p_hist | (p_box / p_density) + 
+    plot_layout(widths = c(4, 0.7))  
+
   
   return(p_combined)
 }
 
-# Crea grafici per age, age_of_onset, disease_duration
+# Esempio: crea i grafici per le variabili numeriche
 for (var in c("age", "age_of_onset", "disease_duration")) {
   
-  p <- plot_numeric_dist(df, var, bins = 15)
+  p <- plot_numeric_full(df, var, bins = 15)
   
-  output_path <- paste0("outputs/figures/dist_", var, ".png")
+  output_path <- paste0("outputs/figures/full_dist_", var, ".png")
   ggsave(output_path, plot = p, width = 10, height = 7, dpi = 300)
   saved_png <- c(saved_png, output_path)
   
