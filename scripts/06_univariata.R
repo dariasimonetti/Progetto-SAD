@@ -262,8 +262,9 @@ plot_numeric_full <- function(data, var_name, bins = 15) {
     theme(plot.title = element_text(face = "bold", size = 12))
   
   # colonna destra più stretta
-  p_combined <- p_hist | (p_box / p_density) + 
-    plot_layout(widths = c(4, 1), heights = c(0.7, 1.3))  
+  right_col <- p_box / p_density + plot_layout(heights = c(1.5, 1))
+  p_combined <- p_hist | right_col + plot_layout(widths = c(4, 1.2))
+  
   
 
   
