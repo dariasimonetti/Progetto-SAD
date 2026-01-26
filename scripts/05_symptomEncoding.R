@@ -168,8 +168,16 @@ frequency_table %>%
 # Glimpse finale
 cat("\n\\nStruttura colonne symptom:\n")
 cat("--------------------------------------------------------------------------------\n")
+# Rimuovo la colonna originale 'symptom' ormai inutile
+df <- df %>% select(-symptom)
+# Salvataggio dataset aggiornato
+output_path <- "outputs/data/data_complete.rds"
+saveRDS(df, output_path)
+cat("Salvato:", output_path, "(sovrascritto)\n")
 
 df %>%
-  select(id, symptom, all_of(new_cols)) %>%
+  select(id, all_of(new_cols)) %>%
   glimpse()
+
+
 

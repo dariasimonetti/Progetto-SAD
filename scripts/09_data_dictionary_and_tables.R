@@ -183,6 +183,13 @@ table1 <- bind_rows(table1, tibble(
   value = format_median_iqr(df$age)
 ))
 
+# 2. Age of onset
+table1 <- bind_rows(table1, tibble(
+  variable = "Age of onset, years",
+  level = "",
+  value = format_median_iqr(df$age_of_onset)
+))
+
 # Aggiungi missing se presenti
 n_missing_age <- sum(is.na(df$age))
 if (n_missing_age > 0) {

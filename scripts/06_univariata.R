@@ -35,7 +35,7 @@ numeric_vars <- c("age", "age_of_onset", "disease_duration", "edss", "binary_sum
 
 # Categoriche
 categorical_vars <- c("gender", "medicine", "mri_edss_diff", "comorbidity", 
-                      "edss_bin", "edss_3class", "symptom")
+                      "edss_bin", "edss_3class")
 
 # Binarie cliniche
 clinical_binary <- c("pyramidal", "cerebella", "brain_stem", "sensory", 
@@ -282,9 +282,9 @@ for (var in c("age", "age_of_onset", "disease_duration")) {
   
 }
 
-# EDSS:  boxplot + jitter
+# EDSS:  boxplot + jitter + barlot frequenze
 
-p_edss <- ggplot(df, aes(x = "", y = edss)) +
+p_box <- ggplot(df, aes(x = "", y = edss)) +
   geom_boxplot(fill = "#1F9E89FF", alpha = 0.5, width = 0.4, outlier.shape = NA) +
   geom_jitter(width = 0.2, height = 0, color = "#482878FF", alpha = 0.6, size = 2) +
   labs(
@@ -296,9 +296,28 @@ p_edss <- ggplot(df, aes(x = "", y = edss)) +
   theme_minimal() +
   theme(plot.title = element_text(face = "bold"))
 
-ggsave("outputs/figures/edss_box_jitter.png", plot = p_edss, 
-       width = 6, height = 7, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/edss_box_jitter.png")
+p_bar <- ggplot(df, aes(x = factor(edss), fill = factor(edss))) +
+  geom_bar() +
+  geom_text(aes(y = after_stat(count), label = after_stat(count)),
+            stat = "count",
+            vjust = -0.5,
+            color = "#482878FF",
+            size = 3) +
+  scale_fill_viridis(discrete = TRUE, option = "C") +
+  labs(
+    title = "Frequenze EDSS",
+    x = "EDSS Score",
+    y = "Frequenza"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"), legend.position = "none")
+
+
+p_combined <- (p_box | p_bar) + plot_layout(widths = c(2, 2))
+
+ggsave("outputs/figures/edss_box_jitter_bar.png", plot = p_combined, 
+       width = 8, height = 6, dpi = 300)
+saved_png <- c(saved_png, "outputs/figures/edss_box_jitter_bar.png")
 
 # Binary sum: barplot conteggi
 
@@ -315,7 +334,7 @@ p_binary_sum <- df %>%
   ) %>%
   ggplot(aes(x = factor(binary_sum), y = n, fill = factor(binary_sum))) +
   geom_col(alpha = 0.8) +
-  scale_fill_viridis_d(option = "viridis", end = 0.9) +
+  scale_fill_viridis_d(option =  "C", end = 0.9) +
   geom_text(aes(label = label), vjust = -0.5, size = 3.5) +
   labs(
     title = "Distribuzione Binary Sum",
