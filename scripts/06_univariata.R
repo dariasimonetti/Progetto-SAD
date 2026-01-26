@@ -506,7 +506,50 @@ if (! is.null(freq_presenting) && nrow(freq_presenting) > 0) {
   cat("Nessun grafico presenting (colonne non presenti)\n")
 }
 
-# D) OUTPUT CONSOLE FINALE
+# D)----------------- OUTLIER DISEASE_DURATION (regola IQR / Tukey) -------------------
+
+
+# Calcola Q1, Q3 e IQR
+dd_iqr <- df %>%
+  summarise(
+    q1 = quantile(disease_duration, 0.25, na.rm = TRUE),
+    q3 = quantile(disease_duration, 0.75, na.rm = TRUE)
+  ) %>%
+  mutate(
+    iqr = q3 - q1,
+    lower = q1 - 1.5 * iqr,
+    upper = q3 + 1.5 * iqr
+  )
+
+# Identifica le osservazioni outlier e prepara il formato CSV
+outliers_dd <- df %>%
+  mutate(row_id = row_number()) %>%
+  select(row_id, disease_duration) %>%
+  rename(value = disease_duration) %>%
+  mutate(
+    variable = "disease_duration",
+    lower = dd_iqr$lower,
+    upper = dd_iqr$upper
+  ) %>%
+  filter(value < lower | value > upper) %>%
+  arrange(desc(value)) %>%
+  select(row_id, variable, value, lower, upper)
+
+# Salva il CSV
+write_csv(outliers_dd, "outputs/tables/outliers_disease_duration.csv")
+cat("Outlier salvati in: outputs/tables/outliers_disease_duration.csv\n")
+cat("Totale outlier disease_duration:", nrow(outliers_dd), "\n")
+
+# Trasformazione log1p
+df <- df %>%
+  mutate(log_disease_duration = log1p(disease_duration))
+
+# Salva il dataset completo
+saveRDS(df, "outputs/data/data_complete.rds")
+
+
+
+# E) OUTPUT CONSOLE FINALE
 
 
 

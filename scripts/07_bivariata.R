@@ -16,10 +16,6 @@ set.seed(123)
 # Carica dati
 df <- readRDS("outputs/data/data_complete.rds")
 
-# Crea log_disease_duration
-df <- df %>%
-  mutate(log_disease_duration = log1p(disease_duration))
-
 # DEFINIZIONE VARIABILI
 
 # Numeriche
@@ -50,95 +46,6 @@ cat("   Binarie totali:", length(all_binary), "\n")
 # Contatori file salvati
 saved_csv <- character()
 saved_png <- character()
-
-
-# A)-------------------SKEWNESS VARIABILI NUMERICHE-----------------------------
-
-skewness_df <- df %>%
-  select(all_of(numeric_vars)) %>%
-  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
-  group_by(variable) %>%
-  summarise(
-    n_valid = sum(!is.na(value)),
-    n_na = sum(is.na(value)),
-    skewness = round(e1071::skewness(value, type = 2, na.rm = TRUE), 3),
-    .groups = "drop"
-  ) %>%
-  mutate(variable = factor(variable, levels = numeric_vars)) %>%
-  arrange(variable) %>%
-  mutate(variable = as.character(variable))
-
-write_csv(skewness_df, "outputs/tables/skewness_numeric.csv")
-saved_csv <- c(saved_csv, "outputs/tables/skewness_numeric.csv")
-
-print(skewness_df)
-
-
-# B)-------------------SCREENING OUTLIER (regola IQR / Tukey)-------------------
-
-
-# Calcola soglie per ogni variabile
-outlier_thresholds <- df %>%
-  select(all_of(numeric_vars)) %>%
-  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
-  group_by(variable) %>%
-  summarise(
-    n_valid = sum(!is.na(value)),
-    n_na = sum(is.na(value)),
-    q1 = round(quantile(value, 0.25, na.rm = TRUE), 2),
-    q3 = round(quantile(value, 0.75, na.rm = TRUE), 2),
-    iqr = round(IQR(value, na.rm = TRUE), 2),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    lower = round(q1 - 1.5 * iqr, 2),
-    upper = round(q3 + 1.5 * iqr, 2)
-  )
-
-# Conta outlier per variabile
-count_outliers <- function(data, var_name, lower, upper) {
-  x <- data[[var_name]]
-  sum(x < lower | x > upper, na.rm = TRUE)
-}
-
-outlier_thresholds <- outlier_thresholds %>%
-  rowwise() %>%
-  mutate(
-    n_outliers = count_outliers(df, variable, lower, upper)
-  ) %>%
-  ungroup() %>%
-  mutate(variable = factor(variable, levels = numeric_vars)) %>%
-  arrange(variable) %>%
-  mutate(variable = as.character(variable))
-
-write_csv(outlier_thresholds, "outputs/tables/outlier_thresholds_iqr.csv")
-saved_csv <- c(saved_csv, "outputs/tables/outlier_thresholds_iqr.csv")
-
-print(outlier_thresholds)
-
-# B2) Elenco osservazioni outlier
-
-outliers_rows <- df %>%
-  mutate(row_id = row_number()) %>%
-  select(row_id, all_of(numeric_vars)) %>%
-  pivot_longer(-row_id, names_to = "variable", values_to = "value") %>%
-  left_join(
-    outlier_thresholds %>% select(variable, lower, upper),
-    by = "variable"
-  ) %>%
-  filter(! is.na(value) & (value < lower | value > upper)) %>%
-  arrange(variable, desc(value))
-
-write_csv(outliers_rows, "outputs/tables/outliers_iqr_rows.csv")
-saved_csv <- c(saved_csv, "outputs/tables/outliers_iqr_rows.csv")
-
-cat("outputs/tables/outliers_iqr_rows.csv\n")
-cat("Totale outlier identificati:", nrow(outliers_rows), "\n")
-
-if (nrow(outliers_rows) > 0) {
-  cat("\n Riepilogo per variabile:\n")
-  print(outliers_rows %>% count(variable, name = "n_outliers"))
-}
 
 
 # C)-------------------CORRELAZIONI SPEARMAN CON EDSS---------------------------
