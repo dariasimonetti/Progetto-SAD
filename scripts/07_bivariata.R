@@ -5,6 +5,8 @@
 # ============================================================================
 
 
+if (!require(viridis, quietly = TRUE)) install.packages("viridis")
+library(viridis)
 source("scripts/01_setup.R")
 
 if (!require(e1071, quietly = TRUE)) install.packages("e1071")
@@ -48,7 +50,7 @@ saved_csv <- character()
 saved_png <- character()
 
 
-# C)-------------------CORRELAZIONI SPEARMAN CON EDSS---------------------------
+# A)-------------------CORRELAZIONI SPEARMAN CON EDSS---------------------------
 
 # Variabili da correlare con EDSS
 corr_vars <- c("age", "age_of_onset", "disease_duration", 
@@ -87,7 +89,7 @@ cat("outputs/tables/spearman_correlations.csv\n")
 print(spearman_corr)
 
 
-# D)-------------------GRAFICI SCATTER EDSS vs NUMERICHE------------------------
+# B)-------------------GRAFICI SCATTER EDSS vs NUMERICHE------------------------
 
 # Funzione per creare scatter plot
 create_scatter <- function(data, x_var, y_var = "edss") {
@@ -98,16 +100,16 @@ create_scatter <- function(data, x_var, y_var = "edss") {
     filter(!is.na(.data[[x_var]]) & !is.na(.data[[y_var]])) %>%
     ggplot(aes(x = .data[[x_var]], y = .data[[y_var]])) +
     geom_point(
-      position = position_jitter(height = 0.1, width = 0),
+      position = position_jitter(height = 0.05, width = 0),
       alpha = 0.6,
-      color = project_colors[5],
+      color = plasma(6)[4],
       size = 2
     ) +
     geom_smooth(
       method = "loess",
       se = TRUE,
-      color = project_colors[6],
-      fill = project_colors[6],
+      color = plasma(6)[3],
+      fill = plasma(6)[3],
       alpha = 0.2
     ) +
     labs(
@@ -134,7 +136,7 @@ for (var in scatter_vars) {
 }
 
 
-# E)-------------------CONFRONTI EDSS TRA GRUPPI (TEST NON PARAMETRICI)---------
+# C)-------------------CONFRONTI EDSS TRA GRUPPI (TEST NON PARAMETRICI)---------
 
 # tabella risultati
 bivariate_tests <- tibble(
@@ -236,28 +238,56 @@ create_boxplot <- function(data, x_var, y_var = "edss", rotate_x = FALSE) {
   
   title_x <- str_replace_all(x_var, "_", " ") %>% str_to_title()
   
-  p <- data %>%
+  data <- data %>%
     filter(!is.na(.data[[x_var]]) & !is.na(.data[[y_var]])) %>%
-    ggplot(aes(x = .data[[x_var]], y = .data[[y_var]])) +
+    mutate(!!x_var := as.factor(.data[[x_var]]))
+  
+  n_levels <- nlevels(data[[x_var]])
+  
+  # Palette plasma dinamica
+  fill_colors <- plasma(
+    n_levels,
+    begin = 0.25,
+    end   = 0.75
+  )
+  
+  point_colors <- plasma(
+    n_levels,
+    begin = 0.30,
+    end   = 0.70
+  )
+  
+  p <- ggplot(
+    data,
+    aes(
+      x = .data[[x_var]],
+      y = .data[[y_var]],
+      fill = .data[[x_var]],
+      color = .data[[x_var]]
+    )
+  ) +
     geom_boxplot(
-      fill = project_colors[1],
       alpha = 0.5,
       outlier.shape = NA
     ) +
     geom_jitter(
-      width = 0.15,
-      height = 0.05,
-      alpha = 0.6,
-      color = project_colors[6],
+      width = 0.2,
+      height = 0,
+      alpha = 0.7,
       size = 2
     ) +
+    scale_fill_manual(values = fill_colors) +
+    scale_color_manual(values = point_colors) +
     labs(
       title = paste("EDSS per", title_x),
       x = title_x,
       y = "EDSS Score"
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(face = "bold"))
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.title = element_blank()
+    )
   
   if (rotate_x) {
     p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -265,6 +295,7 @@ create_boxplot <- function(data, x_var, y_var = "edss", rotate_x = FALSE) {
   
   return(p)
 }
+
 
 # Gender
 p_gender <- create_boxplot(df %>% filter(gender %in% c("F", "M")), "gender")
@@ -288,9 +319,38 @@ saved_png <- c(saved_png, "outputs/figures/box_edss_by_mri_edss_diff.png")
 p_medicine <- df %>%
   filter(!is.na(medicine) & !is.na(edss)) %>%
   mutate(medicine = fct_infreq(medicine)) %>%
-  ggplot(aes(x = medicine, y = edss)) +
-  geom_boxplot(fill = project_colors[1], alpha = 0.5, outlier.shape = NA) +
-  geom_jitter(width = 0.15, height = 0.05, alpha = 0.6, color = project_colors[6], size = 2) +
+  ggplot(
+    aes(
+      x = medicine,
+      y = edss,
+      fill = medicine,
+      color = medicine
+    )
+  ) +
+  geom_boxplot(
+    alpha = 0.5,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.2,
+    height = 0,
+    alpha = 0.7,
+    size = 2
+  ) +
+  scale_fill_manual(
+    values = plasma(
+      nlevels(df$medicine),
+      begin = 0.20,
+      end   = 0.80
+    )
+  ) +
+  scale_color_manual(
+    values = plasma(
+      nlevels(df$medicine),
+      begin = 0.20,
+      end   = 0.80
+    )
+  ) +
   labs(
     title = "EDSS by Medicine",
     x = "Medicine (ordered by frequency)",
@@ -299,15 +359,17 @@ p_medicine <- df %>%
   theme_minimal() +
   theme(
     plot.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
   )
+
 
 ggsave("outputs/figures/box_edss_by_medicine.png", plot = p_medicine, 
        width = 8, height = 5, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/box_edss_by_medicine.png")
 
 
-# E-bis)---------------BINARY_SUM VS EDSS CLASSES-------------------------------
+# C-bis)---------------BINARY_SUM VS EDSS CLASSES-------------------------------
 
 # Funzione helper
 format_p <- function(p) {
@@ -441,27 +503,43 @@ if ("edss_bin" %in% names(df)) {
   
   p_bs_edss_bin <- df %>%
     filter(!is.na(edss_bin) & !is.na(binary_sum)) %>%
-    ggplot(aes(x = edss_bin, y = binary_sum)) +
+    mutate(edss_bin = as.factor(edss_bin)) %>%
+    ggplot(
+      aes(
+        x = edss_bin,
+        y = binary_sum,
+        fill = edss_bin,
+        color = edss_bin
+      )
+    ) +
     geom_boxplot(
-      fill = project_colors[1],
       alpha = 0.5,
       outlier.shape = NA
     ) +
     geom_jitter(
-      width = 0.15,
-      height = 0.1,
-      alpha = 0.6,
-      color = project_colors[6],
+      width = 0.2,
+      height = 0,
+      alpha = 0.7,
       size = 2
+    ) +
+    scale_fill_manual(
+      values = plasma(2, begin = 0.35, end = 0.65)
+    ) +
+    scale_color_manual(
+      values = plasma(2, begin = 0.35, end = 0.65)
     ) +
     labs(
       title = "Binary Sum per EDSS (classificazione binaria)",
-      subtitle = "class0 (<=2.0) vs class1 (>2.0)",
+      subtitle = "≤ 2.0 vs > 2.0",
       x = "EDSS Classe Binaria",
       y = "Binary Sum"
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(face = "bold"))
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.position = "none"
+    )
+  
   
   ggsave("outputs/figures/box_binary_sum_by_edss_bin.png", plot = p_bs_edss_bin,
          width = 8, height = 5, dpi = 300)
@@ -474,30 +552,44 @@ if ("edss_3class" %in% names(df)) {
   
   p_bs_edss_3class <- df %>%
     filter(!is.na(edss_3class) & !is.na(binary_sum)) %>%
-    ggplot(aes(x = edss_3class, y = binary_sum)) +
+    mutate(edss_3class = as.factor(edss_3class)) %>%
+    ggplot(
+      aes(
+        x = edss_3class,
+        y = binary_sum,
+        fill = edss_3class,
+        color = edss_3class
+      )
+    ) +
     geom_boxplot(
-      fill = project_colors[1],
       alpha = 0.5,
       outlier.shape = NA
     ) +
     geom_jitter(
-      width = 0.15,
-      height = 0.1,
-      alpha = 0.6,
-      color = project_colors[6],
+      width = 0.2,
+      height = 0,
+      alpha = 0.7,
       size = 2
     ) +
+    scale_fill_manual(
+      values = plasma(3, begin = 0.30, end = 0.70)
+    ) +
+    scale_color_manual(
+      values = plasma(3, begin = 0.30, end = 0.70)
+    ) +
     labs(
-      title = "Binary Sum by EDSS (classificazione 3-classi)",
-      subtitle = "normal (0-2. 0), mild (2.5-4.0), severe (>4.0)",
+      title = "Binary Sum per EDSS (3-classi)",
+      subtitle = "normal, mild, severe",
       x = "EDSS 3-Classi",
       y = "Binary Sum"
     ) +
     theme_minimal() +
     theme(
       plot.title = element_text(face = "bold"),
-      axis.text.x = element_text(angle = 15, hjust = 1)
+      axis.text.x = element_text(angle = 15, hjust = 1),
+      legend.position = "none"
     )
+  
   
   ggsave("outputs/figures/box_binary_sum_by_edss_3class.png", plot = p_bs_edss_3class,
          width = 8, height = 5, dpi = 300)
@@ -505,7 +597,7 @@ if ("edss_3class" %in% names(df)) {
   cat("outputs/figures/box_binary_sum_by_edss_3class.png\n")
 }
 
-# F)-------------------EDSS VS VARIABILI BINARIE (WILCOXON BATCH)---------------
+# D)-------------------EDSS VS VARIABILI BINARIE (WILCOXON BATCH)---------------
 
 # Funzione per test Wilcoxon su variabile binaria
 wilcox_binary <- function(data, feature_name, outcome = "edss") {
@@ -613,29 +705,39 @@ top10_binary <- wilcox_results %>%
   )
 
 if (nrow(top10_binary) > 0) {
-  p_top10 <- ggplot(top10_binary, aes(x = median_diff, y = feature)) +
-    geom_point(size = 4, color = project_colors[3]) +
+  
+  # Palette prisma (gradiente viola-giallo centrale)
+  prisma_pal <- plasma(6, begin = 0.25, end = 0.75)
+  
+  p_top10_grad <- ggplot(top10_binary, aes(x = median_diff, y = feature, color = median_diff)) +
     geom_segment(aes(x = 0, xend = median_diff, y = feature, yend = feature),
-                 color = project_colors[3], linewidth = 1) +
+                 linewidth = 1) +
+    geom_point(size = 4) +
+    scale_color_gradientn(
+      colors = prisma_pal,
+      guide = guide_colorbar(title = "Differenza Mediana")
+    ) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
     labs(
-      title = "Top 10 Binary Features:  Differenza mediana EDSS",
+      title = "Top 10 Binary Features: Differenza mediana EDSS",
       subtitle = "Differenza tra mediana EDSS (gruppo=1) e mediana EDSS (gruppo=0)",
-      x = "Median EDSS Difference (group 1 - group 0)",
+      x = "Differenza mediana EDSS (gruppo 1 - gruppo 0)",
       y = "Feature"
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(face = "bold"))
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.title = element_text(face = "bold")
+    )
   
-  ggsave("outputs/figures/top10_binary_edss_median_diff.png", plot = p_top10,
+  ggsave("outputs/figures/top10_binary_edss_median_diff_prisma_grad.png", plot = p_top10_grad,
          width = 9, height = 7, dpi = 300)
-  saved_png <- c(saved_png, "outputs/figures/top10_binary_edss_median_diff.png")
+  saved_png <- c(saved_png, "outputs/figures/top10_binary_edss_median_diff_prisma_grad.png")
 }
 
+# E)-------------------ASSOCIAZIONI TRA VARIABILI BINARIE-----------------------
 
-# G)-------------------ASSOCIAZIONI TRA VARIABILI BINARIE-----------------------
-
-# --- G1) Selezione feature binarie ---
+# --- E1) Selezione feature binarie ---
 
 # Costruisco dataframe binario
 bin_df <- df %>%
@@ -648,7 +750,7 @@ bin_df[is.na(bin_df)] <- 0
 
 cat("   Dimensioni:", nrow(bin_df), "x", ncol(bin_df), "\n")
 
-# --- G2) Esclusione feature a varianza zero ---
+# --- E2) Esclusione feature a varianza zero ---
 
 variances <- vapply(bin_df, function(x) stats::var(x, na.rm = TRUE), numeric(1))
 zero_var_features <- names(variances)[is.na(variances) | variances == 0]
@@ -663,7 +765,7 @@ if (length(zero_var_features) > 0) {
 
 cat("Features per matrici:", ncol(bin_df_filtered), "\n")
 
-# --- G3) Matrice PHI (correlazione Pearson su 0/1) ---
+# --- E3) Matrice PHI (correlazione Pearson su 0/1) ---
 
 phi_mat <- cor(bin_df_filtered, method = "pearson")
 
@@ -684,10 +786,13 @@ phi_long <- phi_mat %>%
 p_phi_heat <- ggplot(phi_long, aes(x = feature_a, y = feature_b, fill = phi)) +
   geom_tile(color = "white", linewidth = 0.2) +
   scale_fill_gradient2(
-    low = "#2166AC", mid = "white", high = "#B2182B",
-    midpoint = 0, limits = c(-1, 1),
+    low = "#807DBA",   # viola soft
+    mid = "#F7F7F7",   # bianco
+    high = "#FDB863",  # arancio chiaro
+    midpoint = 0,
+    limits = c(-1, 1),
     name = "PHI"
-  ) +
+  )  +
   labs(
     title = "Matrice di correlazione PHI (caratteristiche binarie)",
     x = "", y = ""
@@ -704,7 +809,7 @@ ggsave("outputs/figures/heatmap_phi_binaries.png", plot = p_phi_heat,
        width = 10, height = 9, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/heatmap_phi_binaries.png")
 
-# --- G4) Matrice Jaccard ---
+# --- E4) Matrice Jaccard ---
 
 # Funzione Jaccard similarity
 jaccard_similarity <- function(a, b) {
@@ -755,11 +860,12 @@ jaccard_long <- jaccard_mat %>%
 p_jaccard_heat <- ggplot(jaccard_long, aes(x = feature_a, y = feature_b, fill = jaccard)) +
   geom_tile(color = "white", linewidth = 0.2) +
   scale_fill_gradient(
-    low = "white", high = project_colors[1],
+    low = "#F7F7F7",   # bianco
+    high = "#FDB863",  # arancio chiaro
     limits = c(0, 1),
     name = "Jaccard",
     na.value = "gray90"
-  ) +
+  )  +
   labs(
     title = "Matrice di similarità di Jaccard (caratteristiche binarie)",
     subtitle = "Co-occorrenza di valori positivi (1)",
@@ -777,7 +883,7 @@ ggsave("outputs/figures/heatmap_jaccard_binaries.png", plot = p_jaccard_heat,
        width = 10, height = 9, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/heatmap_jaccard_binaries.png")
 
-# --- G5) Top coppie più associate ---
+# --- E5) Top coppie più associate ---
 
 # Funzione per estrarre upper triangle
 extract_pairs <- function(mat, value_name) {
@@ -818,6 +924,34 @@ jaccard_pairs <- extract_pairs(jaccard_mat, "jaccard") %>%
 
 write_csv(jaccard_pairs, "outputs/tables/top20_jaccard_pairs.csv")
 saved_csv <- c(saved_csv, "outputs/tables/top20_jaccard_pairs.csv")
+
+
+# Top 20 PHI con colori più soft
+p_top_phi <- ggplot(phi_pairs, aes(x = abs(phi), 
+                                   y = fct_reorder(paste(feature_a, feature_b, sep=" - "), abs(phi)), 
+                                   fill = abs(phi))) +
+  geom_col() +
+  scale_fill_gradient(low = "#BFD3E6", high = "#2C7BB6") +
+  labs(title="Top 20 PHI", x="Valore assoluto Phi", y="Coppie di feature") +
+  theme_minimal() +
+  theme(plot.title = element_text(face="bold"), legend.position="none")
+
+# Top 20 Jaccard con colori soft
+p_top_jaccard <- ggplot(jaccard_pairs, aes(x = jaccard, 
+                                           y = fct_reorder(paste(feature_a, feature_b, sep=" - "), jaccard),
+                                           fill = jaccard)) +
+  geom_col() +
+  scale_fill_gradient(low = "#FEE6CE", high = "#E6550D") +
+  labs(title="Top 20 Jaccard", x="Jaccard similarity", y="Coppie di feature") +
+  theme_minimal() +
+  theme(plot.title = element_text(face="bold"), legend.position="none")
+
+# Combinazione unica con patchwork
+figura_unica <- (p_phi_heat | p_jaccard_heat) / (p_top_phi | p_top_jaccard)
+
+# Salvataggio
+ggsave("outputs/figures/figura_unica_binary_associations_softcolors.png", plot = figura_unica,
+       width = 16, height = 12, dpi = 300)
 
 
 # OUTPUT CONSOLE FINALE
