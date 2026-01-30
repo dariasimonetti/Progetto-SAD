@@ -9,6 +9,8 @@ source("scripts/01_setup.R")
 
 # Carica pacchetti aggiuntivi
 if (!require(vegan, quietly = TRUE)) install.packages("vegan")
+if (!require(viridis, quietly = TRUE)) install.packages("viridis")
+library(viridis)
 library(vegan)
 
 # Riproducibilità
@@ -194,12 +196,13 @@ jaccard_long <- jaccard_mat_ordered %>%
 # Heatmap
 p_heatmap <- ggplot(jaccard_long, aes(x = patient_a, y = patient_b, fill = distance)) +
   geom_tile() +
-  scale_fill_gradient(
-    low = project_colors[1], 
-    high = project_colors[6],
+  scale_fill_viridis_c(
+    option = "plasma",   # molto leggibile al centro
+    begin = 0.05,
+    end   = 0.95,
     limits = c(0, 1),
     name = "Distanza\nJaccard"
-  ) +
+  )+
   labs(
     title = "Matrice delle distanze di Jaccard (pazienti)",
     subtitle = "Ordinati per raggruppamento gerarchico (collegamento medio)",
@@ -256,9 +259,10 @@ saved_csv <- c(saved_csv, "outputs/tables/jaccard_cmdscale_2d.csv")
 # Scatter con gradiente EDSS
 p_mds_edss <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
   geom_point(aes(color = edss, size = binary_sum), alpha = 0.7) +
-  scale_color_gradient(
-    low = project_colors[3], 
-    high = project_colors[2],
+  scale_color_viridis_c(
+    option = "plasma",
+    begin = 0.05,
+    end = 0.95,
     name = "EDSS"
   ) +
   scale_size_continuous(
@@ -267,7 +271,7 @@ p_mds_edss <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
   ) +
   labs(
     title = "PCoA sulla distanza di Jaccard (caratteristiche binarie)",
-    subtitle = paste0("Dim1: ", var_explained[1], "% | Dim2: ", var_explained[2], "% varianza spiegata"),
+    subtitle = paste0("Colorato per EDSS | Dim1: ", var_explained[1], "% | Dim2: ", var_explained[2], "% "),
     x = paste0("Dimension 1 (", var_explained[1], "%)"),
     y = paste0("Dimension 2 (", var_explained[2], "%)")
   ) +
@@ -284,10 +288,9 @@ saved_png <- c(saved_png, "outputs/figures/cmdscale_jaccard_edss.png")
 # Versione alternativa con gruppi EDSS discreti
 p_mds_3class <- ggplot(mds_coords, aes(x = Dim1, y = Dim2)) +
   geom_point(aes(color = edss_3class, size = binary_sum), alpha = 0.7) +
-  scale_color_manual(
-    values = c("normal (0-2.0)" = project_colors[3], 
-               "mild (2.5-4.0)" = project_colors[2], 
-               "severe (>4.0)" = project_colors[4]),
+  scale_color_viridis_d(
+    option = "plasma",
+    end = 0.9,
     name = "EDSS 3-Class"
   ) +
   scale_size_continuous(
@@ -320,15 +323,20 @@ if ("edss_bin" %in% names(df)) {
   cat("Distribuzione edss_bin:\n")
   print(table(df$edss_bin, useNA = "ifany"))
   
+  n_levels <- nlevels(df$edss_bin)
+  
+  fill_colors <- plasma(n_levels, begin = 0.25, end = 0.75)
+  point_colors <- plasma(n_levels, begin = 0.30, end = 0.70)
+  
   p_binary_edss <- df %>%
     filter(! is.na(edss_bin) & !is.na(binary_sum)) %>%
-    ggplot(aes(x = edss_bin, y = binary_sum, fill = edss_bin)) +
-    geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-    geom_jitter(width = 0.2, alpha = 0.5, size = 2) +
-    scale_fill_manual(
-      values = c("class0 (<=2.0)" = project_colors[3], 
-                 "class1 (>2.0)" = project_colors[4])
-    ) +
+    mutate(edss_bin = as.factor(edss_bin)) %>%
+    ggplot(aes(x = edss_bin, y = binary_sum,
+               fill = edss_bin, color = edss_bin)) +
+    geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+    geom_jitter(width = 0.3, alpha = 0.7, size = 2) +
+    scale_fill_manual(values = fill_colors) +
+    scale_color_manual(values = point_colors) + 
     labs(
       title = "Binary Sum per classi EDSS (binary)",
       subtitle = "class0 (<=2.0) vs class1 (>2.0)",
@@ -377,6 +385,13 @@ if (length(top5_features) >= 3 && "edss_3class" %in% names(df)) {
     )
   
   # Barplot
+  n_levels <- nlevels(freq_by_edss$edss_3class)
+  
+  fill_colors <- plasma(
+    n_levels,
+    begin = 0.25,
+    end   = 0.75
+  )
   p_top5 <- ggplot(freq_by_edss, 
                    aes(x = feature, y = freq, fill = edss_3class)) +
     geom_col(position = position_dodge(width = 0.8), width = 0.7, alpha = 0.8) +
@@ -387,9 +402,7 @@ if (length(top5_features) >= 3 && "edss_3class" %in% names(df)) {
       size = 3
     ) +
     scale_fill_manual(
-      values = c("normal (0-2.0)" = project_colors[3], 
-                 "mild (2.5-4.0)" = project_colors[2], 
-                 "severe (>4.0)" = project_colors[4]),
+      values = fill_colors,
       name = "EDSS 3-Class"
     ) +
     labs(
