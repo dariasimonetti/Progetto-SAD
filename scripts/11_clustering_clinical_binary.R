@@ -13,6 +13,8 @@ if (!require(cluster, quietly = TRUE)) install.packages("cluster")
 if (!require(dendextend, quietly = TRUE)) install.packages("dendextend")
 if (!require(scales, quietly = TRUE)) install.packages("scales")
 if (!require(colorspace, quietly = TRUE)) install.packages("colorspace")
+if (!require(viridis, quietly = TRUE)) install.packages("viridis")
+library(viridis)
 
 library(tidyverse)
 library(vegan)
@@ -51,9 +53,13 @@ calc_avg_silhouette <- function(dist_obj, clusters) {
   mean(sil[, "sil_width"])
 }
 
-save_colored_dendrogram <- function(hc, k, file_path, main, sub) {
+save_colored_dendrogram <- function(hc, k, file_path, main, sub, pal = NULL) {
   dend <- as.dendrogram(hc)
-  dend <- dendextend::color_branches(dend, k = k)
+  if (!is.null(pal)) {
+    dend <- dendextend::color_branches(dend, k = k, col = pal)
+  } else {
+    dend <- dendextend::color_branches(dend, k = k)
+  }
   
   png(file_path, width = 12, height = 8, units = "in", res = 300)
   par(mar = c(5, 4, 4, 2))
@@ -613,6 +619,8 @@ p_top_features <- feat_freq %>%
   ) %>%
   ggplot(aes(x = feature, y = freq, fill = cluster)) +
   geom_col(position = position_dodge(width = 0.8), alpha = 0.85) +
+  scale_fill_manual(values = plasma(length(unique(feat_freq$cluster)), begin = 0.25, end = 0.75),
+                    name = "Cluster")+
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
   labs(
     title = "Top feature che differenziano i cluster",
@@ -644,13 +652,16 @@ sil_plot_df <- silhouette_grid %>%
     linkage = ifelse(is.na(linkage), "none", linkage),
     linkage = factor(linkage, levels = c("none", "average", "complete"))
   )
-
+  n_alg <- length(unique(sil_plot_df$algorithm))
+  pal_plasma <- plasma(n_alg, begin = 0.25, end = 0.75)
+                     
 p_silhouette <- ggplot(sil_plot_df, aes(x = k, y = avg_silhouette, color = algorithm, linetype = linkage)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.5) +
   facet_wrap(~distance, ncol = 2) +
   geom_vline(xintercept = best_config$k, linetype = "dashed", color = "gray40", alpha = 0.7) +
   scale_x_continuous(breaks = k_range) +
+  scale_color_manual(values = pal_plasma, name = "Algoritmo") +
   labs(
     title = "Silhouette media vs numero di cluster (k)",
     subtitle = paste0(
@@ -690,11 +701,14 @@ pcoa_df <- tibble(
 
 centroids <- pcoa_df %>% group_by(cluster) %>% summarise(Dim1 = mean(Dim1), Dim2 = mean(Dim2), .groups = "drop")
 
+n_clusters <- best_config$k
+pal_plasma <- plasma(n_clusters, begin = 0.25, end = 0.75)
+
 p_pcoa <- ggplot(pcoa_df, aes(Dim1, Dim2)) +
   geom_point(aes(color = cluster, size = binary_sum), alpha = 0.78) +
   geom_point(data = centroids, aes(Dim1, Dim2, color = cluster),
              shape = 4, stroke = 1.4, size = 4, inherit.aes = FALSE) +
-  scale_color_manual(values = project_colors[1:best_config$k], name = "Cluster") +
+  scale_color_manual(values = pal_plasma, name = "Cluster")+
   scale_size_continuous(range = c(2, 6), name = "Binary sum") +
   labs(
     title = "PCoA su distanza tra pazienti (feature cliniche binarie)",
@@ -713,12 +727,14 @@ saved_png <- c(saved_png, "outputs/figures/pcoa_best_clusters_11.png")
 
 # 7.3 Dendrogramma best (solo se hclust)
 if (best_config$algorithm == "hclust") {
+  pal_plasma <- plasma(best_config$k, begin = 0.25, end = 0.75)
   save_colored_dendrogram(
     hc = hc_best,
     k = best_config$k,
     file_path = "outputs/figures/dendrogram_best_11.png",
     main = paste0("Dendrogramma best (", best_config$distance, " + ", best_config$linkage, ")"),
-    sub = paste0("Rami colorati=cluster | k=", best_config$k, " | silhouette=", round(best_config$avg_silhouette, 3))
+    sub = paste0("Rami colorati=cluster | k=", best_config$k, " | silhouette=", round(best_config$avg_silhouette, 3)),
+    pal = pal_plasma
   )
   saved_png <- c(saved_png, "outputs/figures/dendrogram_best_11.png")
 } else {
@@ -731,8 +747,9 @@ p_edss_cluster <- df %>%
   mutate(cluster = factor(cluster)) %>%
   ggplot(aes(cluster, edss, fill = cluster)) +
   geom_boxplot(alpha = 0.55, outlier.shape = NA) +
-  geom_jitter(width = 0.18, alpha = 0.55, size = 2) +
-  scale_fill_manual(values = project_colors[1:best_config$k]) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.55, size = 2) +
+  scale_fill_manual(values = plasma(length(unique(df$cluster)), begin = 0.25, end = 0.75),
+                    name = "Cluster") +
   labs(
     title = "EDSS per cluster (validazione esterna)",
     subtitle = paste0("Clustering su feature binarie | k=", best_config$k),
@@ -763,9 +780,7 @@ if ("edss_3class" %in% names(df)) {
     geom_col(position = "fill", alpha = 0.85) +
     scale_y_continuous(labels = percent_format(scale = 1)) +
     scale_fill_manual(
-      values = c("normal (0-2.0)" = project_colors[3],
-                 "mild (2.5-4.0)" = project_colors[2],
-                 "severe (>4.0)" = project_colors[6]),
+      values = plasma(3, begin = 0.25, end = 0.75),
       name = "EDSS 3-class"
     ) +
     labs(
@@ -796,8 +811,7 @@ if ("edss_bin" %in% names(df)) {
     geom_col(position = "fill", alpha = 0.85) +
     scale_y_continuous(labels = percent_format(scale = 1)) +
     scale_fill_manual(
-      values = c("class0 (<=2.0)" = project_colors[3],
-                 "class1 (>2.0)" = project_colors[4]),
+      values = plasma(2, begin = 0.25, end = 0.75),
       name = "EDSS bin"
     ) +
     labs(
@@ -821,8 +835,8 @@ if ("binary_sum" %in% names(df)) {
     mutate(cluster = factor(cluster)) %>%
     ggplot(aes(cluster, binary_sum, fill = cluster)) +
     geom_boxplot(alpha = 0.55, outlier.shape = NA) +
-    geom_jitter(width = 0.18, alpha = 0.55, size = 2) +
-    scale_fill_manual(values = project_colors[1:best_config$k]) +
+    geom_jitter(width = 0.2, height = 0, alpha = 0.55, size = 2) +
+    scale_fill_manual(values = plasma(best_config$k, begin = 0.25, end = 0.75)) +
     labs(
       title = "Binary sum per cluster",
       subtitle = "Somma indicatori clinici positivi (profiling cluster)",
@@ -859,9 +873,7 @@ plot_edss_composition <- function(df_in, tag) {
       geom_col(position = "fill", alpha = 0.85) +
       scale_y_continuous(labels = percent_format(scale = 1)) +
       scale_fill_manual(
-        values = c("normal (0-2.0)" = project_colors[3],
-                   "mild (2.5-4.0)" = project_colors[2],
-                   "severe (>4.0)" = project_colors[6]),
+        values = plasma(3, begin = 0.25, end = 0.75),
         name = "EDSS 3-class"
       ) +
       labs(
@@ -892,10 +904,9 @@ plot_edss_composition <- function(df_in, tag) {
       geom_col(position = "fill", alpha = 0.85) +
       scale_y_continuous(labels = percent_format(scale = 1)) +
       scale_fill_manual(
-        values = c("class0 (<=2.0)" = project_colors[3],
-                   "class1 (>2.0)" = project_colors[4]),
+        values = plasma(2, begin = 0.25, end = 0.75),
         name = "EDSS bin"
-      ) +
+      )+
       labs(
         title = paste0("Composizione EDSS bin per cluster (", tag, ")"),
         subtitle = "Percentuali all'interno di ciascun cluster (100% stacked)",
