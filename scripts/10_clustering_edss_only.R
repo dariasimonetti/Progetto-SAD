@@ -70,8 +70,9 @@ save_colored_dendrogram <- function(hc, k, file_path, main, sub, labels_vec = NU
     leaf_vals <- factor(leaf_vals)
     
     # palette
-    pal_values <- c(project_colors[3], project_colors[2], project_colors[1], project_colors[4])
-    pal <- setNames(pal_values[seq_len(nlevels(leaf_vals))], levels(leaf_vals))
+    pal_values <- plasma(nlevels(factor(leaf_vals)), begin = 0.25, end = 0.75)
+    pal <- setNames(pal_values, levels(factor(leaf_vals)))
+    
     
     dend <- dendextend::set(dend, "labels_col", pal[as.character(leaf_vals)])
     dend <- dendextend::set(dend, "labels_cex", 0.6)
@@ -221,8 +222,9 @@ p_edss_clusters <- clusters_best_df %>%
   mutate(cluster = factor(cluster)) %>%
   ggplot(aes(x = cluster, y = edss, fill = cluster)) +
   geom_boxplot(alpha = 0.45, outlier.shape = NA) +
-  geom_jitter(width = 0.18, alpha = 0.65, size = 2) +
-  scale_fill_manual(values = project_colors[1:best_clusters[[best_dist]]$k]) +
+  geom_jitter(aes(color = cluster), width = 0.2, height = 0, alpha = 0.65, size = 2) +
+  scale_color_manual(values = plasma(best_clusters[[best_dist]]$k, begin = 0.30, end = 0.70))+
+  scale_fill_manual(values = plasma(best_clusters[[best_dist]]$k, begin = 0.25, end = 0.75)) +
   labs(
     title = "Clustering su EDSS numerico",
     subtitle = paste0("Distanza: ", best_dist, " | average linkage | k=", best_clusters[[best_dist]]$k,
@@ -244,7 +246,7 @@ p_edss_ordered <- clusters_best_df %>%
   mutate(rank = row_number(), cluster = factor(cluster)) %>%
   ggplot(aes(x = rank, y = edss, color = cluster)) +
   geom_point(size = 2.8, alpha = 0.85) +
-  scale_color_manual(values = project_colors[1:best_clusters[[best_dist]]$k]) +
+  scale_color_manual(values = plasma(best_clusters[[best_dist]]$k, begin = 0.25, end = 0.75))+
   labs(
     title = "EDSS ordinato con assegnazione cluster",
     subtitle = paste0("Distanza: ", best_dist, " | k=", best_clusters[[best_dist]]$k,
@@ -345,8 +347,7 @@ p_bin_clusters <- clusters_bin_df %>%
   ggplot(aes(x = cluster, y = perc, fill = edss_bin_label)) +
   geom_col(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = percent_format(scale = 1)) +
-  scale_fill_manual(values = c("<=2.0" = project_colors[3], ">2.0" = project_colors[4]),
-                    name = "EDSS bin") +
+  scale_fill_manual(values = plasma(2, begin = 0.25, end = 0.75))+
   labs(
     title = "Cluster vs EDSS binario (composizione %)",
     subtitle = paste0("Simple Matching | k=2 | silhouette=", round(sil_bin, 3)),
@@ -388,7 +389,7 @@ p_bin_clusters <- clusters_bin_df %>%
   geom_col(position = "dodge", alpha = 0.8) +
   geom_text(aes(label = n), position = position_dodge(width = 0.9), 
             vjust = -0.3, size = 3.5) +
-  scale_fill_manual(values = c(project_colors[3], project_colors[4]), name = "EDSS Class") +
+  scale_fill_manual(values = plasma(n_levels, begin = 0.25, end = 0.75))+
   labs(
     title = "Clustering EDSS binario",
     subtitle = paste0("Distanza: Simple Matching | k = 2 | Silhouette = ", round(sil_bin, 3)),
@@ -484,12 +485,7 @@ p_3class_clusters <- clusters_3class_df %>%
   ggplot(aes(x = cluster, y = perc, fill = edss_3class)) +
   geom_col(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = percent_format(scale = 1)) +
-  scale_fill_manual(
-    values = c("normal (0-2.0)" = project_colors[3],
-               "mild (2.5-4.0)" = project_colors[2],
-               "severe (>4.0)" = project_colors[6]),
-    name = "EDSS 3-class"
-  ) +
+  scale_fill_manual(values = plasma(3, begin = 0.25, end = 0.75))+
   labs(
     title = "Cluster vs EDSS 3-class (composizione %)",
     subtitle = paste0("Manhattan ordinale | k=3 | silhouette=", round(sil_3class, 3)),
