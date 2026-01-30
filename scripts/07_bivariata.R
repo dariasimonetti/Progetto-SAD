@@ -731,7 +731,7 @@ if (nrow(top10_binary) > 0) {
     )
   
   ggsave("outputs/figures/top10_binary_edss_median_diff_prisma_grad.png", plot = p_top10_grad,
-         width = 9, height = 7, dpi = 300)
+         width = 10, height = 4, dpi = 300)
   saved_png <- c(saved_png, "outputs/figures/top10_binary_edss_median_diff_prisma_grad.png")
 }
 
@@ -794,7 +794,7 @@ p_phi_heat <- ggplot(phi_long, aes(x = feature_a, y = feature_b, fill = phi)) +
     name = "PHI"
   )  +
   labs(
-    title = "Matrice di correlazione PHI (caratteristiche binarie)",
+    title = "Matrice di correlazione PHI \n (caratteristiche binarie)",
     x = "", y = ""
   ) +
   theme_minimal() +
@@ -809,79 +809,6 @@ ggsave("outputs/figures/heatmap_phi_binaries.png", plot = p_phi_heat,
        width = 10, height = 9, dpi = 300)
 saved_png <- c(saved_png, "outputs/figures/heatmap_phi_binaries.png")
 
-# --- E4) Matrice Jaccard ---
-
-# Funzione Jaccard similarity
-jaccard_similarity <- function(a, b) {
-  n11 <- sum(a == 1 & b == 1)
-  n10 <- sum(a == 1 & b == 0)
-  n01 <- sum(a == 0 & b == 1)
-  
-  denom <- n11 + n10 + n01
-  
-  if (denom == 0) {
-    return(NA_real_)
-  }
-  
-  return(n11 / denom)
-}
-
-# Costruisco matrice Jaccard
-feature_names <- names(bin_df_filtered)
-n_features <- length(feature_names)
-
-jaccard_mat <- matrix(NA_real_, nrow = n_features, ncol = n_features)
-rownames(jaccard_mat) <- feature_names
-colnames(jaccard_mat) <- feature_names
-
-for (i in 1:n_features) {
-  for (j in 1:n_features) {
-    jaccard_mat[i, j] <- jaccard_similarity(
-      bin_df_filtered[[feature_names[i]]],
-      bin_df_filtered[[feature_names[j]]]
-    )
-  }
-}
-
-# Salvataggio matrice
-jaccard_df <- as.data.frame(jaccard_mat) %>%
-  mutate(feature = rownames(jaccard_mat)) %>%
-  select(feature, everything())
-
-write_csv(jaccard_df, "outputs/tables/jaccard_matrix.csv")
-saved_csv <- c(saved_csv, "outputs/tables/jaccard_matrix.csv")
-
-# Heatmap Jaccard
-jaccard_long <- jaccard_mat %>%
-  as.data.frame() %>%
-  mutate(feature_a = rownames(. )) %>%
-  pivot_longer(-feature_a, names_to = "feature_b", values_to = "jaccard")
-
-p_jaccard_heat <- ggplot(jaccard_long, aes(x = feature_a, y = feature_b, fill = jaccard)) +
-  geom_tile(color = "white", linewidth = 0.2) +
-  scale_fill_gradient(
-    low = "#F7F7F7",   # bianco
-    high = "#FDB863",  # arancio chiaro
-    limits = c(0, 1),
-    name = "Jaccard",
-    na.value = "gray90"
-  )  +
-  labs(
-    title = "Matrice di similarità di Jaccard (caratteristiche binarie)",
-    subtitle = "Co-occorrenza di valori positivi (1)",
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
-    axis.text.y = element_text(size = 7)
-  ) +
-  coord_fixed()
-
-ggsave("outputs/figures/heatmap_jaccard_binaries.png", plot = p_jaccard_heat,
-       width = 10, height = 9, dpi = 300)
-saved_png <- c(saved_png, "outputs/figures/heatmap_jaccard_binaries.png")
 
 # --- E5) Top coppie più associate ---
 
@@ -916,16 +843,6 @@ write_csv(phi_pairs, "outputs/tables/top20_phi_pairs.csv")
 saved_csv <- c(saved_csv, "outputs/tables/top20_phi_pairs.csv")
 
 
-# Top 20 Jaccard
-jaccard_pairs <- extract_pairs(jaccard_mat, "jaccard") %>%
-  filter(!is.na(jaccard)) %>%
-  slice_max(jaccard, n = 20) %>%
-  arrange(desc(jaccard))
-
-write_csv(jaccard_pairs, "outputs/tables/top20_jaccard_pairs.csv")
-saved_csv <- c(saved_csv, "outputs/tables/top20_jaccard_pairs.csv")
-
-
 # Top 20 PHI con colori più soft
 p_top_phi <- ggplot(phi_pairs, aes(x = abs(phi), 
                                    y = fct_reorder(paste(feature_a, feature_b, sep=" - "), abs(phi)), 
@@ -936,22 +853,12 @@ p_top_phi <- ggplot(phi_pairs, aes(x = abs(phi),
   theme_minimal() +
   theme(plot.title = element_text(face="bold"), legend.position="none")
 
-# Top 20 Jaccard con colori soft
-p_top_jaccard <- ggplot(jaccard_pairs, aes(x = jaccard, 
-                                           y = fct_reorder(paste(feature_a, feature_b, sep=" - "), jaccard),
-                                           fill = jaccard)) +
-  geom_col() +
-  scale_fill_gradient(low = "#FEE6CE", high = "#E6550D") +
-  labs(title="Top 20 Jaccard", x="Jaccard similarity", y="Coppie di feature") +
-  theme_minimal() +
-  theme(plot.title = element_text(face="bold"), legend.position="none")
-
 # Combinazione unica con patchwork
-figura_unica <- (p_phi_heat | p_jaccard_heat) / (p_top_phi | p_top_jaccard)
+figura_unica <- (p_phi_heat) | (p_top_phi)
 
 # Salvataggio
 ggsave("outputs/figures/figura_unica_binary_associations_softcolors.png", plot = figura_unica,
-       width = 16, height = 12, dpi = 300)
+       width = 11, height = 4, dpi = 300)
 
 
 # OUTPUT CONSOLE FINALE
