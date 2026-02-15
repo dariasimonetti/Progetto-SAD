@@ -828,6 +828,20 @@ if ("edss_bin" %in% names(df)) {
   saved_png <- c(saved_png, "outputs/figures/edssbin_composition_by_cluster_11.png")
 }
 
+p_combined <- p_comp_3 + p_comp_bin +
+  plot_layout(ncol = 2) 
+
+ggsave(
+  "outputs/figures/edss_composition_combined_11.png",
+  plot = p_combined,
+  width = 14,
+  height = 5.5,
+  dpi = 300
+)
+
+saved_png <- c(saved_png, "outputs/figures/edss_composition_combined_11.png")
+
+
 # 7.7 binary_sum per cluster
 if ("binary_sum" %in% names(df)) {
   p_binarysum <- df %>%
